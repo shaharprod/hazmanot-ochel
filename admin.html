@@ -170,8 +170,8 @@
 
   <div class="card">
     <h2>שליחת סיכום בוואטסאפ למספר נוסף</h2>
-    <div class="muted">שולחים את הסיכום היומי או החודשי לכל מספר שבוחרים, בנוסף לספקית. השליחה הזו לא נועלת את ההזמנה.</div>
-    <div class="field" style="margin-top:10px"><label for="xPhone">מספר וואטסאפ</label><input type="tel" id="xPhone" dir="ltr" inputmode="tel" autocomplete="off" placeholder="0501234567"></div>
+    <div class="muted">שולחים את הסיכום היומי או החודשי למי שרוצים, בנוסף לספקית. אם משאירים את המספר ריק, וואטסאפ נפתח ובוחרים שם למי לשלוח (איש קשר או קבוצה). השליחה הזו לא נועלת את ההזמנה.</div>
+    <div class="field" style="margin-top:10px"><label for="xPhone">מספר וואטסאפ (לא חובה)</label><input type="tel" id="xPhone" dir="ltr" inputmode="tel" autocomplete="off" placeholder="0501234567"></div>
     <div class="rowflex">
       <button type="button" class="primary" id="xDay">שליחת הסיכום היומי</button>
       <button type="button" class="primary" id="xMonth">שליחת הסיכום החודשי</button>
@@ -482,17 +482,19 @@ setInterval(function(){
 }, 40000);
 /* שליחת סיכום בוואטסאפ למספר נוסף */
 function xNumber(){
-  var d = String(el('xPhone').value || '').replace(/[^0-9]/g, '');
+  var raw = String(el('xPhone').value || '').trim();
+  if (!raw){ try { localStorage.removeItem('hazmanot_xphone'); } catch(e){} return 'pick'; }
+  var d = raw.replace(/[^0-9]/g, '');
   if (d.indexOf('00') === 0) d = d.slice(2);
   if (d.charAt(0) === '0') d = '972' + d.slice(1);
-  if (d.length < 10 || d.length > 15){ status('המספר לא תקין. כותבים מספר מלא, למשל 0501234567', true); el('xPhone').focus(); return ''; }
+  if (d.length < 10 || d.length > 15){ status('המספר לא תקין. כותבים מספר מלא, למשל 0501234567, או משאירים ריק ובוחרים בוואטסאפ', true); el('xPhone').focus(); return ''; }
   try { localStorage.setItem('hazmanot_xphone', el('xPhone').value); } catch(e){}
   return d;
 }
 function xOpen(text){
   var n = xNumber(); if (!n) return;
-  window.open('https://wa.me/' + n + '?text=' + encodeURIComponent(text), '_blank', 'noopener');
-  status('וואטסאפ נפתח עם ההודעה. נשאר ללחוץ שם על שליחה', false);
+  window.open('https://wa.me/' + (n === 'pick' ? '' : n) + '?text=' + encodeURIComponent(text), '_blank', 'noopener');
+  status(n === 'pick' ? 'וואטסאפ נפתח. בוחרים שם למי לשלוח' : 'וואטסאפ נפתח עם ההודעה. נשאר ללחוץ שם על שליחה', false);
 }
 function xMonthText(){
   var L = ['סיכום ארוחות לחודש ' + MONTH.title + ' – ' + MONTH.site + ':', ''];
