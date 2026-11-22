@@ -43,12 +43,12 @@
   th{background:#e1f5ee}
   .off td{color:#8a9794}
   .gridwrap{overflow-x:auto;border:1px solid #d9e2df;border-radius:10px}
-  table.grid{font-size:14px;white-space:nowrap}
-  table.grid th,table.grid td{padding:4px 6px;text-align:center;min-width:26px}
-  table.grid td.nm,table.grid th.nm{text-align:right;position:sticky;right:0;background:#fff;z-index:1}
-  table.grid th.nm{background:#e1f5ee}
-  table.grid .we{background:#faeeda}
-  table.grid tr.tot td,table.grid tr.tot th{font-weight:bold;background:#e1f5ee}
+  table.daygrid{font-size:14px;white-space:nowrap}
+  table.daygrid th,table.daygrid td{padding:4px 6px;text-align:center;min-width:26px}
+  table.daygrid td.nm,table.daygrid th.nm{text-align:right;position:sticky;right:0;background:#fff;z-index:1}
+  table.daygrid th.nm{background:#e1f5ee}
+  table.daygrid .we{background:#faeeda}
+  table.daygrid tr.tot td,table.daygrid tr.tot th{font-weight:bold;background:#e1f5ee}
   .rowflex{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
   .field{margin-bottom:10px}
   .field label{display:block;font-size:15px;color:#5b6b67;margin-bottom:3px}
@@ -135,7 +135,7 @@
     </div>
     <table id="month"></table>
     <h3 style="margin:18px 0 6px;font-size:17px">הטבלה היומית (כמו בקובץ האקסל)</h3>
-    <div class="gridwrap"><table id="monthGrid" class="grid"></table></div>
+    <div class="gridwrap"><table id="monthGrid" class="daygrid"></table></div>
   </div>
 
   <div class="card">
