@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>הזמנת ארוחות – קומבה קריית גת</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Arial,"Segoe UI",sans-serif;background:#f4f7f6;color:#16302b;font-size:18px}
+  .top{background:#0f6e56;color:#fff;padding:14px 18px;position:sticky;top:0;z-index:5}
+  .top h1{margin:0;font-size:21px}
+  .top .date{font-size:17px;opacity:.95;margin-top:2px}
+  .wrap{max-width:560px;margin:0 auto;padding:14px 14px 130px}
+  .hint{background:#e1f5ee;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:16px;line-height:1.5}
+  .closed{background:#fcebeb;color:#791f1f;border-radius:12px;padding:12px 14px;margin-bottom:12px;font-weight:bold;line-height:1.5}
+  .item{background:#fff;border:2px solid #d9e2df;border-radius:14px;margin-bottom:9px;overflow:hidden}
+  .item.on{border-color:#0f6e56;background:#e1f5ee}
+  .item.open{border-color:#0f6e56}
+  .head{display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:0;padding:13px 16px;font-size:20px;font-family:inherit;color:inherit;cursor:pointer;text-align:right}
+  .head:disabled{cursor:default;opacity:.7}
+  .head .nm{font-weight:bold}
+  .head .dish{display:block;font-size:16px;font-weight:normal;color:#0f6e56;margin-top:2px}
+  .mark{width:32px;height:32px;border:2px solid #0f6e56;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:22px;color:#fff;flex:none;background:#fff;margin-right:10px}
+  .item.on .mark{background:#0f6e56}
+  .edit{padding:0 14px 14px}
+  .edit label{display:block;font-size:15px;color:#5b6b67;margin-bottom:4px}
+  input[type=text]{width:100%;font-family:inherit;font-size:19px;padding:12px;border:2px solid #0f6e56;border-radius:10px;background:#fff;color:inherit}
+  select.hist{width:100%;margin-top:8px;font-family:inherit;font-size:17px;padding:11px;border:1px solid #0f6e56;border-radius:10px;background:#fff;color:#0f6e56}
+  .btns{display:flex;gap:8px;margin-top:10px}
+  .btns button{flex:1;font-family:inherit;font-size:18px;padding:12px;border-radius:10px;border:2px solid #0f6e56;background:#fff;color:#0f6e56;cursor:pointer}
+  .btns button.primary{background:#0f6e56;color:#fff;font-weight:bold}
+  .btns button.danger{border-color:#a32d2d;color:#a32d2d;flex:none}
+  h2{font-size:19px;margin:22px 0 8px;color:#0f6e56}
+  .note{display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid #d9e2df;border-radius:10px;padding:9px 12px;margin-bottom:6px;font-size:17px}
+  .note button{background:none;border:0;color:#a32d2d;font-size:16px;font-family:inherit;cursor:pointer;text-decoration:underline;flex:none;margin-right:10px}
+  .addnote{display:flex;gap:8px;margin-top:6px}
+  .addnote button{font-family:inherit;font-size:17px;padding:0 16px;border-radius:10px;border:2px solid #0f6e56;background:#0f6e56;color:#fff;cursor:pointer;flex:none}
+  .bar{position:fixed;bottom:0;right:0;left:0;background:#fff;border-top:2px solid #0f6e56;padding:10px 16px;text-align:center}
+  .bar .n{font-size:22px;font-weight:bold;color:#0f6e56}
+  .bar .s{font-size:15px;color:#5b6b67;margin-top:2px;min-height:20px}
+  .bar .s.err{color:#a32d2d;font-weight:bold}
+  .sendbtn{display:block;width:100%;margin-top:18px;font-family:inherit;font-size:22px;font-weight:bold;padding:16px;border-radius:14px;border:0;background:#0f6e56;color:#fff;cursor:pointer}
+  .sendbtn:disabled{opacity:.5;cursor:default}
+  .done{background:#fff;border:3px solid #0f6e56;border-radius:16px;padding:20px 18px;text-align:center}
+  .done .big{font-size:26px;font-weight:bold;color:#0f6e56}
+  .done .sum{text-align:right;margin:14px 0;font-size:17px;line-height:1.7}
+  .done button{font-family:inherit;font-size:18px;padding:12px 18px;border-radius:10px;border:2px solid #0f6e56;background:#fff;color:#0f6e56;cursor:pointer}
+  .refresh{background:none;border:0;color:#0f6e56;font-size:16px;text-decoration:underline;cursor:pointer;font-family:inherit;margin-top:14px}
+  body.loading > *:not(#loading){display:none}
+  #loading{padding:60px 20px;text-align:center;font-size:20px;color:#0f6e56}
+</style>
+</head>
+<body class="loading">
+<div id="loading">טוען…</div>
+<div class="top">
+  <h1 id="title">הזמנת ארוחות</h1>
+  <div class="date" id="date"></div>
+</div>
+<div class="wrap" id="doneWrap" style="display:none">
+  <div class="done">
+    <div class="big">ההזמנה נשלחה ✓</div>
+    <div id="doneWhen" style="color:#5b6b67;margin-top:4px"></div>
+    <div class="sum" id="doneSum"></div>
+    <button type="button" id="backBtn">חזרה לעריכה</button>
+  </div>
+</div>
+<div class="wrap" id="mainWrap">
+  <div id="closed" class="closed" style="display:none"></div>
+  <div id="hint" class="hint">לוחצים על שם, כותבים מה להזמין (מנה ושתייה) ולוחצים "שמירה". אפשר לבחור מתפריט ההזמנות הקודמות של אותו עובד. בסיום לוחצים למטה על "שליחת ההזמנה".</div>
+  <div id="list"></div>
+  <h2>תוספות להזמנה כולה</h2>
+  <div id="notes"></div>
+  <div class="addnote" id="addnote">
+    <input type="text" id="noteText" placeholder='למשל: פיתות, סכו"ם, סלטים, טחינה'>
+    <button type="button" id="noteAdd">הוספה</button>
+  </div>
+  <button type="button" class="sendbtn" id="sendBtn">שליחת ההזמנה</button>
+  <div style="text-align:center"><button class="refresh" id="refresh" type="button">רענון הרשימה</button></div>
+</div>
+<div class="bar">
+  <div class="n" id="total"></div>
+  <div class="s" id="status"></div>
+</div>
+<script>
+var API_URL = "https://script.google.com/macros/s/AKfycbwsVWROvVjHlW-9C2j0oiXWjSZaa3D1vJHFChxOpfXNeU8xzGXUr_cqkwep8E3iILXf/exec";
+function apiCall(fn, args){
+  return fetch(API_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn: fn, args: args || [] }) })
+    .then(function(r){ if (!r.ok) throw new Error('תקלת תקשורת (' + r.status + ')'); return r.json(); })
+    .then(function(j){ if (!j || !j.ok) throw new Error((j && j.error) || 'תקלה'); return j.data; });
+}
+function makeRunner(ok, fail){
+  return new Proxy({}, { get: function(t, k){
+    if (k === 'withSuccessHandler') return function(f){ return makeRunner(f, fail); };
+    if (k === 'withFailureHandler') return function(f){ return makeRunner(ok, f); };
+    return function(){ apiCall(k, Array.prototype.slice.call(arguments)).then(function(d){ if (ok) ok(d); }, function(e){ if (fail) fail(e); }); };
+  } });
+}
+var google = { script: { run: makeRunner(null, null) } };
+apiCall('apiOrderState', []).then(function(s){ window.__BOOT__ = s; document.body.className = ''; document.getElementById('loading').style.display = 'none'; __start(); },
+  function(e){ document.getElementById('loading').textContent = 'הדף לא נטען. בדקו את החיבור לאינטרנט ורעננו. (' + e.message + ')'; });
+function __start(){
+
+var S = window.__BOOT__;
+var pending = 0;
+var openId = null;
+var draft = '';
+
+function el(id){ return document.getElementById(id); }
+function mk(tag, cls, text){ var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+function setStatus(text, isErr){ var s = el('status'); s.textContent = text; s.className = 's' + (isErr ? ' err' : ''); }
+
+function run(fn, args, okText){
+  pending++; setStatus('שומר...', false);
+  var r = google.script.run
+    .withSuccessHandler(function(state){ pending--; if (pending === 0){ S = state; render(); } setStatus(okText || 'נשמר ✓', false); })
+    .withFailureHandler(function(err){ pending--; setStatus('לא נשמר: ' + (err && err.message ? err.message : 'תקלה, נסו שוב'), true); if (pending === 0) reload(true); });
+  r[fn].apply(r, args);
+}
+
+function render(){
+  el('title').textContent = 'הזמנת ארוחות – ' + S.site;
+  el('date').textContent = S.label;
+  var c = el('closed');
+  if (S.closed){ c.style.display = 'block'; c.textContent = S.reason; el('hint').style.display = 'none'; el('addnote').style.display = 'none'; openId = null; }
+  else { c.style.display = 'none'; el('hint').style.display = 'block'; el('addnote').style.display = 'flex'; }
+  el('sendBtn').style.display = S.closed ? 'none' : 'block';
+
+  var list = el('list'); list.innerHTML = '';
+  var focusInput = null;
+  S.workers.forEach(function(w){
+    var isOpen = openId === w.id && !S.closed;
+    var item = mk('div', 'item' + (w.on ? ' on' : '') + (isOpen ? ' open' : ''));
+    var head = mk('button', 'head'); head.type = 'button'; head.disabled = !!S.closed;
+    var left = mk('span');
+    left.appendChild(mk('span', 'nm', w.name));
+    if (w.on) left.appendChild(mk('span', 'dish', w.dish));
+    head.appendChild(left);
+    head.appendChild(mk('span', 'mark', w.on ? '✓' : ''));
+    head.addEventListener('click', function(){
+      if (openId === w.id){ openId = null; } else { openId = w.id; draft = w.dish || ''; }
+      render();
+    });
+    item.appendChild(head);
+
+    if (isOpen){
+      var ed = mk('div', 'edit');
+      ed.appendChild(mk('label', '', 'מה להזמין עבור ' + w.name + '?'));
+      var inp = mk('input'); inp.type = 'text'; inp.value = draft; inp.maxLength = 200; inp.placeholder = "למשל: שווארמה, אורז, צ'יפס, קולה";
+      inp.addEventListener('input', function(){ draft = inp.value; });
+      inp.addEventListener('keydown', function(e){ if (e.key === 'Enter') save(w, inp.value); });
+      ed.appendChild(inp);
+      if (w.recent && w.recent.length){
+        var sel = mk('select', 'hist');
+        var o0 = mk('option', '', 'בחירה מהזמנות קודמות (' + w.recent.length + ')'); o0.value = ''; sel.appendChild(o0);
+        w.recent.forEach(function(d){ var op = mk('option', '', d); op.value = d; sel.appendChild(op); });
+        sel.addEventListener('change', function(){ if (sel.value){ inp.value = sel.value; draft = sel.value; } });
+        ed.appendChild(sel);
+      }
+      var btns = mk('div', 'btns');
+      var ok = mk('button', 'primary', 'שמירה'); ok.type = 'button'; ok.addEventListener('click', function(){ save(w, inp.value); });
+      btns.appendChild(ok);
+      if (w.on){
+        var rm = mk('button', 'danger', 'ביטול ההזמנה'); rm.type = 'button';
+        rm.addEventListener('click', function(){ openId = null; w.on = false; w.dish = ''; render(); run('apiOrderSet', [w.id, ''], 'ההזמנה בוטלה'); });
+        btns.appendChild(rm);
+      }
+      ed.appendChild(btns);
+      item.appendChild(ed);
+      focusInput = inp;
+    }
+    list.appendChild(item);
+  });
+  if (focusInput && document.activeElement !== focusInput){ try { focusInput.focus(); } catch(e){} }
+
+  var notes = el('notes'); notes.innerHTML = '';
+  if (!S.notes.length) notes.appendChild(mk('div', 'note', 'אין תוספות להיום'));
+  S.notes.forEach(function(t){
+    var n = mk('div', 'note'); n.appendChild(mk('span', '', t));
+    if (!S.closed){
+      var x = mk('button', '', 'הסרה'); x.type = 'button';
+      x.addEventListener('click', function(){ run('apiOrderNoteDel', [t], 'התוספת הוסרה'); });
+      n.appendChild(x);
+    }
+    notes.appendChild(n);
+  });
+
+  var n = S.workers.filter(function(w){ return w.on; }).length;
+  el('total').textContent = 'סה"כ להיום: ' + n + (n === 1 ? ' ארוחה' : ' ארוחות');
+}
+
+function save(w, text){
+  text = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!text){ setStatus('כתבו מה להזמין, או בחרו מהתפריט', true); return; }
+  openId = null; w.on = true; w.dish = text; render();
+  run('apiOrderSet', [w.id, text]);
+}
+
+function addNote(){
+  var t = el('noteText').value.replace(/\s+/g, ' ').trim();
+  if (!t){ setStatus('כתבו את התוספת', true); return; }
+  el('noteText').value = '';
+  run('apiOrderNoteAdd', [t], 'התוספת נשמרה');
+}
+
+function reload(quiet){
+  if (pending > 0 || openId !== null) return;
+  if (document.activeElement && document.activeElement.id === 'noteText' && el('noteText').value) return;
+  google.script.run
+    .withSuccessHandler(function(state){ if (pending === 0 && openId === null){ S = state; render(); if (!quiet) setStatus('הרשימה עודכנה', false); } })
+    .withFailureHandler(function(){ if (!quiet) setStatus('הרענון נכשל, בדקו את החיבור לאינטרנט', true); })
+    .apiOrderState();
+}
+
+el('noteAdd').addEventListener('click', addNote);
+el('noteText').addEventListener('keydown', function(e){ if (e.key === 'Enter') addNote(); });
+function sendOrder(){
+  var dr = draft.replace(/\s+/g, ' ').trim(), ow = S.workers.filter(function(w){ return w.id === openId; })[0];
+  if (openId !== null && dr && (!ow || dr !== (ow.dish || ''))){ setStatus('יש שם פתוח שעוד לא נשמר. לחצו "שמירה" ואז שלחו', true); return; }
+  if (pending > 0){ setStatus('רגע, השמירה האחרונה עוד בדרך. נסו שוב בעוד שנייה', true); return; }
+  openId = null;
+  el('sendBtn').disabled = true; setStatus('שולח...', false);
+  google.script.run
+    .withSuccessHandler(function(state){
+      S = state; render(); el('sendBtn').disabled = false;
+      var on = S.workers.filter(function(w){ return w.on; });
+      if (!on.length){ setStatus('עוד לא נרשמה אף ארוחה להיום', true); return; }
+      var sum = el('doneSum'); sum.innerHTML = '';
+      on.forEach(function(w){ var d = mk('div'); d.appendChild(mk('b', '', w.name + ': ')); d.appendChild(mk('span', '', w.dish)); sum.appendChild(d); });
+      S.notes.forEach(function(t){ sum.appendChild(mk('div', '', 'תוספות: ' + t)); });
+      var now = new Date();
+      el('doneWhen').textContent = 'סה"כ ' + on.length + (on.length === 1 ? ' ארוחה' : ' ארוחות') + ' · התקבל בשעה ' + ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
+      el('mainWrap').style.display = 'none'; el('doneWrap').style.display = 'block'; window.scrollTo(0, 0);
+      setStatus('ההזמנה אצל ' + 'המזכירה. אפשר לסגור את הדף', false);
+    })
+    .withFailureHandler(function(){ el('sendBtn').disabled = false; setStatus('השליחה נכשלה, בדקו את החיבור לאינטרנט ונסו שוב', true); })
+    .apiOrderState();
+}
+el('sendBtn').addEventListener('click', sendOrder);
+el('backBtn').addEventListener('click', function(){ el('doneWrap').style.display = 'none'; el('mainWrap').style.display = 'block'; setStatus('', false); });
+el('refresh').addEventListener('click', function(){ openId = null; reload(false); });
+setInterval(function(){ if (!document.hidden) reload(true); }, 45000);
+render();
+setStatus('בסיום לוחצים "שליחת ההזמנה"', false);
+
+}
+</script>
+</body>
+</html>

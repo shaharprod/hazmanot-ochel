@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>ניהול הזמנות ארוחות</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Arial,"Segoe UI",sans-serif;background:#f4f7f6;color:#16302b;font-size:17px;line-height:1.6}
+  .top{background:#0f6e56;color:#fff;padding:16px 18px}
+  .top h1{margin:0;font-size:22px}
+  .wrap{max-width:860px;margin:0 auto;padding:14px 14px 60px}
+  .card{background:#fff;border:1px solid #d9e2df;border-radius:14px;padding:18px;margin-bottom:16px}
+  h2{margin:0 0 12px;font-size:20px;color:#0f6e56}
+  .muted{color:#5b6b67;font-size:15px}
+  .daterow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+  input,select{font-family:inherit;font-size:17px;padding:9px 10px;border:1px solid #b9c7c3;border-radius:10px;background:#fff;color:inherit;max-width:100%}
+  button,.btn{font-family:inherit;font-size:17px;padding:10px 16px;border-radius:10px;border:1px solid #0f6e56;background:#fff;color:#0f6e56;cursor:pointer;text-decoration:none;display:inline-block}
+  button.primary,.btn.primary{background:#0f6e56;color:#fff;font-weight:bold}
+  button.big,.btn.big{font-size:20px;padding:14px 20px;display:block;width:100%;text-align:center}
+  button.danger{border-color:#a32d2d;color:#a32d2d}
+  button:disabled{opacity:.5;cursor:default}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px;align-items:start}
+  .item{border:2px solid #d9e2df;border-radius:12px;background:#fff;overflow:hidden}
+  .item.on{border-color:#0f6e56;background:#e1f5ee}
+  .item .dish{display:block;font-size:15px;font-weight:normal;color:#0f6e56}
+  .edit{padding:0 10px 10px}
+  .edit input{width:100%}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .chip{border-radius:999px;padding:5px 10px;font-size:14px}
+  .note{display:flex;justify-content:space-between;align-items:center;border:1px solid #d9e2df;border-radius:10px;padding:7px 12px;margin-bottom:6px}
+  .nick{width:120px;padding:6px 8px;font-size:16px}
+  .w{display:flex;justify-content:space-between;align-items:center;border:0;padding:10px 12px;background:none;font-size:17px;font-family:inherit;color:inherit;cursor:pointer;text-align:right;width:100%}
+  .w .box{width:24px;height:24px;border:2px solid #0f6e56;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:#fff;background:#fff;flex:none}
+  .item.on .box{background:#0f6e56}
+  .total{font-size:22px;font-weight:bold;color:#0f6e56;margin:12px 0}
+  .msg{background:#f0f4f3;border:1px dashed #0f6e56;border-radius:12px;padding:12px 14px;white-space:pre-wrap;margin:10px 0}
+  .sent{background:#e1f5ee;border-radius:10px;padding:8px 12px;margin:10px 0;font-weight:bold}
+  .warn{background:#faeeda;color:#633806;border-radius:10px;padding:8px 12px;margin:10px 0}
+  table{width:100%;border-collapse:collapse;font-size:16px}
+  th,td{border:1px solid #d9e2df;padding:7px 10px;text-align:right}
+  th{background:#e1f5ee}
+  .off td{color:#8a9794}
+  .rowflex{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+  .field{margin-bottom:10px}
+  .field label{display:block;font-size:15px;color:#5b6b67;margin-bottom:3px}
+  .field input{width:100%;max-width:420px}
+  #status{position:fixed;bottom:0;right:0;left:0;background:#16302b;color:#fff;text-align:center;padding:8px;font-size:15px;display:none}
+  #status.err{background:#a32d2d}
+  .urlbox{width:100%;direction:ltr;text-align:left;font-size:14px}
+  body.loading > *:not(#loading){display:none}
+  #loading{padding:60px 20px;text-align:center;font-size:20px;color:#0f6e56}
+</style>
+</head>
+<body class="loading">
+<div id="loading">טוען…</div>
+<div class="top"><h1 id="title">ניהול הזמנות ארוחות</h1></div>
+<div class="wrap">
+
+  <div class="card">
+    <h2>ההזמנה היומית</h2>
+    <div class="daterow">
+      <button type="button" id="prevDay">יום קודם</button>
+      <input type="date" id="date">
+      <button type="button" id="nextDay">יום הבא</button>
+      <button type="button" id="toToday">היום</button>
+      <button type="button" id="reload">רענון</button>
+    </div>
+    <div class="muted" id="label"></div>
+    <div id="sentBox"></div>
+    <div class="grid" id="list" style="margin-top:10px"></div>
+    <h3 style="margin:14px 0 6px;font-size:17px">תוספות להזמנה כולה</h3>
+    <div id="notes"></div>
+    <div class="rowflex" style="margin-top:4px">
+      <input id="noteText" placeholder='למשל: פיתות, סכו"ם, סלטים, טחינה' style="flex:1;min-width:200px">
+      <button type="button" id="noteAdd">הוספת תוספת</button>
+    </div>
+    <div class="total" id="total"></div>
+    <div class="muted">ההודעה שתישלח:</div>
+    <div class="msg" id="msg"></div>
+    <div id="phoneWarn"></div>
+    <a class="btn primary big" id="send" target="_blank" rel="noopener">שליחה לספקית בוואטסאפ</a>
+    <div class="rowflex">
+      <button type="button" id="copyMsg">העתקת ההודעה</button>
+      <button type="button" id="toggleSent"></button>
+    </div>
+    <div class="muted" style="margin-top:8px">אחרי השליחה ההזמנה ננעלת לעובדים. את יכולה להמשיך לשנות מכאן, או לפתוח אותה מחדש.</div>
+  </div>
+
+  <div class="card">
+    <h2>הקישור לראשי הצוותים</h2>
+    <div class="muted">זה הקישור שנועצים בקבוצת הוואטסאפ. הוא קבוע ולא משתנה מיום ליום.</div>
+    <input class="urlbox" id="orderUrl" readonly style="margin-top:8px">
+    <div class="rowflex">
+      <button type="button" id="copyUrl">העתקת הקישור</button>
+      <a class="btn" id="shareUrl" target="_blank" rel="noopener">שיתוף בוואטסאפ עם הסבר</a>
+      <a class="btn" id="openOrder" target="_blank" rel="noopener">פתיחת דף ההזמנה</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>רשימת העובדים</h2>
+    <table id="workers"></table>
+    <div class="rowflex">
+      <input id="newLast" placeholder="שם משפחה">
+      <input id="newFirst" placeholder="שם פרטי">
+      <input id="newNick" placeholder="כינוי להודעה (לא חובה)">
+      <input id="newCompany" placeholder="חברה" value="TMS" style="width:110px">
+      <button type="button" class="primary" id="addWorker">הוספת עובד</button>
+    </div>
+    <div class="muted" style="margin-top:8px">הכינוי הוא השם שמופיע בהודעה לספקית (למשל "דימה"). בלי כינוי מופיע השם המלא. הסרה מעלימה את העובד מדף ההזמנה. הארוחות שכבר נרשמו לו נשמרות בדוחות, ואפשר להחזיר אותו בכל רגע.</div>
+  </div>
+
+  <div class="card">
+    <h2>סיכום חודשי</h2>
+    <div class="daterow">
+      <button type="button" id="prevMonth">חודש קודם</button>
+      <b id="monthTitle"></b>
+      <button type="button" id="nextMonth">חודש הבא</button>
+      <a class="btn" id="sheetLink" target="_blank" rel="noopener">פתיחת הגיליון המלא</a>
+    </div>
+    <table id="month"></table>
+  </div>
+
+  <div class="card">
+    <h2>הגדרות</h2>
+    <div id="settings"></div>
+    <button type="button" class="primary" id="saveSettings">שמירת הגדרות</button>
+  </div>
+
+</div>
+<div id="status"></div>
+<script>
+var API_URL = "https://script.google.com/macros/s/AKfycbwsVWROvVjHlW-9C2j0oiXWjSZaa3D1vJHFChxOpfXNeU8xzGXUr_cqkwep8E3iILXf/exec";
+function apiCall(fn, args){
+  return fetch(API_URL, { method: 'POST', redirect: 'follow', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn: fn, args: args || [] }) })
+    .then(function(r){ if (!r.ok) throw new Error('תקלת תקשורת (' + r.status + ')'); return r.json(); })
+    .then(function(j){ if (!j || !j.ok) throw new Error((j && j.error) || 'תקלה'); return j.data; });
+}
+function makeRunner(ok, fail){
+  return new Proxy({}, { get: function(t, k){
+    if (k === 'withSuccessHandler') return function(f){ return makeRunner(f, fail); };
+    if (k === 'withFailureHandler') return function(f){ return makeRunner(ok, f); };
+    return function(){ apiCall(k, Array.prototype.slice.call(arguments)).then(function(d){ if (ok) ok(d); }, function(e){ if (fail) fail(e); }); };
+  } });
+}
+var google = { script: { run: makeRunner(null, null) } };
+window.__KEY__ = (new URLSearchParams(location.search)).get('k') || '';
+apiCall('apiAdminState', [window.__KEY__, '']).then(function(s){ window.__BOOT__ = s; document.body.className = ''; document.getElementById('loading').style.display = 'none'; __start(); },
+  function(e){ document.getElementById('loading').textContent = e.message === 'אין הרשאת ניהול.' ? 'קישור הניהול אינו תקין.' : 'הדף לא נטען. בדקו את החיבור לאינטרנט ורעננו. (' + e.message + ')'; });
+function __start(){
+
+var S = window.__BOOT__;
+var KEY = window.__KEY__;
+var MONTH = S.month;
+var busy = 0;
+var openId = null;
+var draft = '';
+
+function el(id){ return document.getElementById(id); }
+function txt(tag, text, cls){ var e = document.createElement(tag); e.textContent = text; if (cls) e.className = cls; return e; }
+
+var statusTimer = null;
+function status(text, isErr){
+  var s = el('status'); s.textContent = text; s.className = isErr ? 'err' : ''; s.style.display = 'block';
+  clearTimeout(statusTimer);
+  statusTimer = setTimeout(function(){ s.style.display = 'none'; }, isErr ? 7000 : 2500);
+}
+
+function call(fn, args, okText){
+  busy++; status('שומר...', false);
+  var r = google.script.run
+    .withSuccessHandler(function(state){ busy--; S = state; MONTH = S.month; render(); status(okText || 'נשמר ✓', false); })
+    .withFailureHandler(function(err){ busy--; render(); status(err && err.message ? err.message : 'תקלה, נסי שוב', true); });
+  r[fn].apply(r, args);
+}
+
+function saveDish(w, text){
+  text = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!text){ status('יש לכתוב מה להזמין', true); return; }
+  openId = null;
+  call('apiAdminSet', [KEY, S.date, w.id, text]);
+}
+
+function shiftDate(d, days){
+  var a = d.split('-'); var dt = new Date(Date.UTC(+a[0], +a[1]-1, +a[2] + days, 12));
+  return dt.toISOString().slice(0, 10);
+}
+function shiftMonth(ym, n){
+  var a = ym.split('-'); var dt = new Date(Date.UTC(+a[0], +a[1]-1 + n, 1, 12));
+  return dt.toISOString().slice(0, 7);
+}
+function loadDate(d){ openId = null; call('apiAdminState', [KEY, d], 'עודכן'); }
+
+function copyText(text){
+  function fb(){
+    var t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select();
+    try { document.execCommand('copy'); status('הועתק', false); } catch(e){ status('ההעתקה נכשלה, אפשר לסמן ולהעתיק ידנית', true); }
+    document.body.removeChild(t);
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function(){ status('הועתק', false); }, fb); else fb();
+}
+
+function render(){
+  el('title').textContent = 'ניהול הזמנות ארוחות – ' + S.site;
+  el('date').value = S.date;
+  el('label').textContent = S.label + (S.date === S.today ? ' (היום)' : '');
+
+  var sb = el('sentBox'); sb.innerHTML = '';
+  if (S.sent) sb.appendChild(txt('div', 'נשלח לספקית ב־' + S.sent.at + ' (' + S.sent.count + ' ארוחות). ההזמנה נעולה לעובדים.', 'sent'));
+  if (S.sent && S.sent.count !== S.total) sb.appendChild(txt('div', 'שימי לב: הכמות השתנתה מאז השליחה (נשלחו ' + S.sent.count + ', עכשיו ' + S.total + '). כדאי לעדכן את הספקית.', 'warn'));
+
+  var list = el('list'); list.innerHTML = '';
+  var focusInput = null;
+  S.workers.forEach(function(w){
+    var isOpen = openId === w.id;
+    var item = document.createElement('div'); item.className = 'item' + (w.on ? ' on' : '');
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'w';
+    var left = document.createElement('span');
+    left.appendChild(txt('b', w.name + (w.active ? '' : ' (הוסר)')));
+    if (w.on) left.appendChild(txt('span', w.dish, 'dish'));
+    b.appendChild(left);
+    b.appendChild(txt('span', w.on ? '✓' : '', 'box'));
+    b.addEventListener('click', function(){ if (openId === w.id) openId = null; else { openId = w.id; draft = w.dish || ''; } render(); });
+    item.appendChild(b);
+    if (isOpen){
+      var ed = document.createElement('div'); ed.className = 'edit';
+      var inp = document.createElement('input'); inp.value = draft; inp.maxLength = 200; inp.placeholder = 'מה להזמין (מנה ושתייה)';
+      inp.addEventListener('input', function(){ draft = inp.value; });
+      inp.addEventListener('keydown', function(e){ if (e.key === 'Enter') saveDish(w, inp.value); });
+      ed.appendChild(inp);
+      if (w.recent && w.recent.length){
+        var sel = document.createElement('select'); sel.style.width = '100%'; sel.style.marginTop = '6px';
+        var o0 = txt('option', 'בחירה מהזמנות קודמות (' + w.recent.length + ')'); o0.value = ''; sel.appendChild(o0);
+        w.recent.forEach(function(d){ var op = txt('option', d); op.value = d; sel.appendChild(op); });
+        sel.addEventListener('change', function(){ if (sel.value){ inp.value = sel.value; draft = sel.value; } });
+        ed.appendChild(sel);
+      }
+      var row = document.createElement('div'); row.className = 'rowflex';
+      var ok = txt('button', 'שמירה', 'primary'); ok.type = 'button'; ok.addEventListener('click', function(){ saveDish(w, inp.value); }); row.appendChild(ok);
+      if (w.on){ var rm = txt('button', 'ביטול ההזמנה', 'danger'); rm.type = 'button'; rm.addEventListener('click', function(){ openId = null; call('apiAdminSet', [KEY, S.date, w.id, ''], 'ההזמנה בוטלה'); }); row.appendChild(rm); }
+      ed.appendChild(row); item.appendChild(ed); focusInput = inp;
+    }
+    list.appendChild(item);
+  });
+  if (focusInput && document.activeElement !== focusInput){ try { focusInput.focus(); } catch(e){} }
+
+  var notes = el('notes'); notes.innerHTML = '';
+  if (!S.notes.length) notes.appendChild(txt('div', 'אין תוספות ליום הזה', 'muted'));
+  S.notes.forEach(function(t){
+    var n = document.createElement('div'); n.className = 'note'; n.appendChild(txt('span', t));
+    var x = txt('button', 'הסרה', 'danger'); x.type = 'button'; x.style.padding = '4px 10px';
+    x.addEventListener('click', function(){ call('apiAdminNoteDel', [KEY, S.date, t], 'התוספת הוסרה'); });
+    n.appendChild(x); notes.appendChild(n);
+  });
+  el('total').textContent = 'סה"כ: ' + S.total + (S.total === 1 ? ' ארוחה' : ' ארוחות');
+  el('msg').textContent = S.message;
+  el('send').href = S.waLink;
+  var pw = el('phoneWarn'); pw.innerHTML = '';
+  if (!S.settings.phone) pw.appendChild(txt('div', 'לא הוגדר טלפון לספקית, ולכן וואטסאפ יבקש לבחור איש קשר. אפשר להגדיר את הטלפון למטה, בהגדרות.', 'warn'));
+  el('toggleSent').textContent = S.sent ? 'פתיחת ההזמנה מחדש לעובדים' : 'סימון כנשלח בלי וואטסאפ';
+
+  el('orderUrl').value = S.orderUrl;
+  el('openOrder').href = S.orderUrl;
+  el('shareUrl').href = 'https://wa.me/?text=' + encodeURIComponent(
+    'שלום לכולם,\nמהיום מזמינים ארוחות דרך הקישור הזה:\n' + S.orderUrl +
+    '\nפותחים, לוחצים על השם, כותבים מה להזמין ולוחצים שמירה. אין צורך לשלוח הודעה בקבוצה.' +
+    (S.settings.cutoff ? '\nאפשר להזמין עד השעה ' + S.settings.cutoff + '.' : '') +
+    '\nתודה, ' + S.settings.sign);
+  el('sheetLink').href = S.sheetUrl;
+
+  var wt = el('workers'); wt.innerHTML = '';
+  var hr = document.createElement('tr');
+  ['שם משפחה','שם פרטי','כינוי להודעה','חברה','מצב',''].forEach(function(h){ hr.appendChild(txt('th', h)); });
+  wt.appendChild(hr);
+  S.allWorkers.forEach(function(w){
+    var tr = document.createElement('tr'); if (!w.active) tr.className = 'off';
+    tr.appendChild(txt('td', w.last)); tr.appendChild(txt('td', w.first));
+    var ntd = document.createElement('td'); var ni = document.createElement('input'); ni.className = 'nick'; ni.value = w.nick || ''; ni.maxLength = 30;
+    ni.addEventListener('change', function(){ call('apiAdminSetNick', [KEY, w.id, ni.value, S.date], 'הכינוי נשמר'); });
+    ntd.appendChild(ni); tr.appendChild(ntd);
+    tr.appendChild(txt('td', w.company));
+    tr.appendChild(txt('td', w.active ? 'פעיל' : 'הוסר'));
+    var td = document.createElement('td');
+    var b = txt('button', w.active ? 'הסרה' : 'החזרה', w.active ? 'danger' : ''); b.type = 'button';
+    b.addEventListener('click', function(){
+      if (w.active && !confirmRemove(w)) return;
+      call('apiAdminSetActive', [KEY, w.id, !w.active, S.date], w.active ? 'העובד הוסר מהרשימה' : 'העובד הוחזר לרשימה');
+    });
+    td.appendChild(b); tr.appendChild(td); wt.appendChild(tr);
+  });
+
+  renderMonth();
+  renderSettings();
+}
+
+var removeArmed = {};
+function confirmRemove(w){
+  if (removeArmed[w.id] && Date.now() - removeArmed[w.id] < 5000){ delete removeArmed[w.id]; return true; }
+  removeArmed[w.id] = Date.now();
+  status('להסרת ' + w.last + ' ' + w.first + ' לחצי שוב על "הסרה"', false);
+  return false;
+}
+
+function renderMonth(){
+  el('monthTitle').textContent = MONTH.title;
+  var t = el('month'); t.innerHTML = '';
+  var hr = document.createElement('tr');
+  ['עובד','ארוחות','לחיוב ₪'].forEach(function(h){ hr.appendChild(txt('th', h)); });
+  t.appendChild(hr);
+  MONTH.rows.forEach(function(r){
+    var tr = document.createElement('tr'); if (!r.active) tr.className = 'off';
+    tr.appendChild(txt('td', r.name + (r.active ? '' : ' (הוסר)'))); tr.appendChild(txt('td', r.total)); tr.appendChild(txt('td', r.cost));
+    t.appendChild(tr);
+  });
+  [['סה"כ ארוחות (' + MONTH.price + ' ₪ לארוחה)', MONTH.meals, MONTH.mealsCost], ['דמי משלוח', '', MONTH.delivery], ['סה"כ כולל', '', MONTH.grand]].forEach(function(r){
+    var tr = document.createElement('tr');
+    r.forEach(function(c){ var td = txt('th', c); tr.appendChild(td); });
+    t.appendChild(tr);
+  });
+}
+
+function loadMonth(ym){
+  status('טוען...', false);
+  google.script.run
+    .withSuccessHandler(function(m){ MONTH = m; renderMonth(); status('עודכן', false); })
+    .withFailureHandler(function(err){ status(err && err.message ? err.message : 'תקלה', true); })
+    .apiAdminMonth(KEY, ym);
+}
+
+var settingsDrawn = false;
+function renderSettings(){
+  var box = el('settings');
+  if (settingsDrawn && document.activeElement && box.contains(document.activeElement)) return;
+  box.innerHTML = '';
+  S.settingsMeta.forEach(function(m){
+    var f = document.createElement('div'); f.className = 'field';
+    var l = txt('label', m.label); l.setAttribute('for', 'set_' + m.k);
+    var i = document.createElement('input'); i.id = 'set_' + m.k; i.value = S.settings[m.k] === null || S.settings[m.k] === undefined ? '' : S.settings[m.k];
+    if (m.k === 'phone'){ i.style.direction = 'ltr'; i.style.textAlign = 'left'; i.placeholder = '0501234567'; }
+    f.appendChild(l); f.appendChild(i); box.appendChild(f);
+  });
+  settingsDrawn = true;
+}
+
+el('date').addEventListener('change', function(){ if (this.value) loadDate(this.value); });
+el('prevDay').addEventListener('click', function(){ loadDate(shiftDate(S.date, -1)); });
+el('nextDay').addEventListener('click', function(){ loadDate(shiftDate(S.date, 1)); });
+el('toToday').addEventListener('click', function(){ loadDate(S.today); });
+el('reload').addEventListener('click', function(){ loadDate(S.date); });
+el('noteAdd').addEventListener('click', function(){ var t = el('noteText').value.replace(/\s+/g, ' ').trim(); if (!t){ status('יש לכתוב את התוספת', true); return; } el('noteText').value = ''; call('apiAdminNoteAdd', [KEY, S.date, t], 'התוספת נשמרה'); });
+el('copyMsg').addEventListener('click', function(){ copyText(S.message); });
+el('copyUrl').addEventListener('click', function(){ copyText(S.orderUrl); });
+el('send').addEventListener('click', function(){ call('apiAdminSent', [KEY, S.date, true], 'סומן כנשלח'); });
+el('toggleSent').addEventListener('click', function(){ call('apiAdminSent', [KEY, S.date, !S.sent], S.sent ? 'ההזמנה נפתחה מחדש' : 'סומן כנשלח'); });
+el('addWorker').addEventListener('click', function(){
+  var last = el('newLast').value, first = el('newFirst').value, comp = el('newCompany').value, nick = el('newNick').value;
+  if (!last.trim() && !first.trim()){ status('יש למלא שם', true); return; }
+  el('newLast').value = ''; el('newFirst').value = ''; el('newNick').value = '';
+  call('apiAdminAddWorker', [KEY, last, first, comp, nick, S.date], 'העובד נוסף');
+});
+el('prevMonth').addEventListener('click', function(){ loadMonth(shiftMonth(MONTH.ym, -1)); });
+el('nextMonth').addEventListener('click', function(){ loadMonth(shiftMonth(MONTH.ym, 1)); });
+el('saveSettings').addEventListener('click', function(){
+  var o = {}; S.settingsMeta.forEach(function(m){ o[m.k] = el('set_' + m.k).value; });
+  settingsDrawn = false;
+  if (document.activeElement) document.activeElement.blur();
+  call('apiAdminSaveSettings', [KEY, o, S.date], 'ההגדרות נשמרו');
+});
+setInterval(function(){
+  if (!document.hidden && busy === 0 && openId === null && S.date === S.today && !(document.activeElement && /INPUT|SELECT/.test(document.activeElement.tagName))) {
+    google.script.run.withSuccessHandler(function(state){ if (busy === 0 && openId === null && state.date === S.date){ S = state; if (MONTH.ym === S.month.ym) MONTH = S.month; render(); } }).apiAdminState(KEY, S.date);
+  }
+}, 40000);
+render();
+
+}
+</script>
+</body>
+</html>
