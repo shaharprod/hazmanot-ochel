@@ -396,7 +396,7 @@ function renderMonth(){
     tr.appendChild(txt('td', r.name + (r.active ? '' : ' (הוסר)'))); tr.appendChild(txt('td', r.total)); tr.appendChild(txt('td', r.cost));
     t.appendChild(tr);
   });
-  [['סה"כ ארוחות (' + MONTH.price + ' ₪ לארוחה)', MONTH.meals, MONTH.mealsCost], ['דמי משלוח', '', MONTH.delivery], ['סה"כ כולל', '', MONTH.grand]].forEach(function(r){
+  [['סה"כ ארוחות (' + (MONTH.mixed ? 'המחיר השתנה במהלך החודש' : MONTH.price + ' ₪ לארוחה') + ')', MONTH.meals, MONTH.mealsCost], ['דמי משלוח', '', MONTH.delivery], ['סה"כ כולל', '', MONTH.grand]].forEach(function(r){
     var tr = document.createElement('tr');
     r.forEach(function(c){ var td = txt('th', c); tr.appendChild(td); });
     t.appendChild(tr);
@@ -501,7 +501,7 @@ function xMonthText(){
   MONTH.rows.forEach(function(r){ if (r.total > 0) L.push(r.name + ': ' + r.total + (r.total === 1 ? ' ארוחה' : ' ארוחות') + ' · ' + r.cost + ' ₪'); });
   if (!MONTH.meals) L.push('אין הזמנות בחודש הזה.');
   L.push('');
-  L.push('סה"כ ' + MONTH.meals + (MONTH.meals === 1 ? ' ארוחה' : ' ארוחות') + ' × ' + MONTH.price + ' ₪ = ' + MONTH.mealsCost + ' ₪');
+  L.push('סה"כ ' + MONTH.meals + (MONTH.meals === 1 ? ' ארוחה' : ' ארוחות') + (MONTH.mixed ? ' · ' : ' × ' + MONTH.price + ' ₪ = ') + MONTH.mealsCost + ' ₪');
   if (MONTH.delivery){ L.push('דמי משלוח: ' + MONTH.delivery + ' ₪'); L.push('סה"כ כולל: ' + MONTH.grand + ' ₪'); }
   return L.join('\n');
 }
