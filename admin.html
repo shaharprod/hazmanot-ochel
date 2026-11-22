@@ -180,6 +180,16 @@
   </div>
 
   <div class="card">
+    <h2>שליחת סיכום במייל</h2>
+    <div class="muted">שולחים את הסיכום היומי או החודשי במייל. תוכנת המייל שלך נפתחת עם ההודעה מוכנה, ונשאר ללחוץ שם על שליחה. אם משאירים את הכתובת ריקה, כותבים את הנמען בתוכנת המייל.</div>
+    <div class="field" style="margin-top:10px"><label for="mTo">כתובת מייל (לא חובה)</label><input type="email" id="mTo" dir="ltr" inputmode="email" autocomplete="off" placeholder="name@example.com"></div>
+    <div class="rowflex">
+      <button type="button" class="primary" id="mDay">שליחת הסיכום היומי במייל</button>
+      <button type="button" class="primary" id="mMonth">שליחת הסיכום החודשי במייל</button>
+    </div>
+  </div>
+
+  <div class="card">
     <h2>הגדרות</h2>
     <div id="settings"></div>
     <button type="button" class="primary" id="saveSettings">שמירת הגדרות</button>
@@ -519,6 +529,23 @@ function xInfo(){ el('xInfo').textContent = 'היומי: ' + S.label + ' · הח
 try { var xSaved = localStorage.getItem('hazmanot_xphone'); if (xSaved) el('xPhone').value = xSaved; } catch(e){}
 el('xDay').addEventListener('click', function(){ xOpen(xDayText()); });
 el('xMonth').addEventListener('click', function(){ xOpen(xMonthText()); });
+/* שליחת סיכום במייל */
+function mAddr(){
+  var raw = String(el('mTo').value || '').trim();
+  if (!raw){ try { localStorage.removeItem('hazmanot_mto'); } catch(e){} return 'pick'; }
+  if (!/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(raw)){ status('כתובת המייל לא תקינה. כותבים כתובת אחת מלאה, למשל name@example.com, או משאירים ריק', true); el('mTo').focus(); return ''; }
+  try { localStorage.setItem('hazmanot_mto', raw); } catch(e){}
+  return raw;
+}
+function mOpen(subject, text){
+  var a = mAddr(); if (!a) return;
+  var link = 'mailto:' + (a === 'pick' ? '' : encodeURIComponent(a).replace(/%40/g, '@')) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(text.replace(/\n/g, '\r\n'));
+  window.location.href = link;
+  status('תוכנת המייל נפתחת עם ההודעה. נשאר ללחוץ שם על שליחה', false);
+}
+try { var mSaved = localStorage.getItem('hazmanot_mto'); if (mSaved) el('mTo').value = mSaved; } catch(e){}
+el('mDay').addEventListener('click', function(){ mOpen('סיכום הזמנת ארוחות – ' + S.label + ' – ' + S.site, xDayText()); });
+el('mMonth').addEventListener('click', function(){ mOpen('סיכום ארוחות לחודש ' + MONTH.title + ' – ' + MONTH.site, xMonthText()); });
 
 render();
 
