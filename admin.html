@@ -169,6 +169,17 @@
   </div>
 
   <div class="card">
+    <h2>שליחת סיכום בוואטסאפ למספר נוסף</h2>
+    <div class="muted">שולחים את הסיכום היומי או החודשי לכל מספר שבוחרים, בנוסף לספקית. השליחה הזו לא נועלת את ההזמנה.</div>
+    <div class="field" style="margin-top:10px"><label for="xPhone">מספר וואטסאפ</label><input type="tel" id="xPhone" dir="ltr" inputmode="tel" autocomplete="off" placeholder="0501234567"></div>
+    <div class="rowflex">
+      <button type="button" class="primary" id="xDay">שליחת הסיכום היומי</button>
+      <button type="button" class="primary" id="xMonth">שליחת הסיכום החודשי</button>
+    </div>
+    <div class="muted" id="xInfo" style="margin-top:8px"></div>
+  </div>
+
+  <div class="card">
     <h2>הגדרות</h2>
     <div id="settings"></div>
     <button type="button" class="primary" id="saveSettings">שמירת הגדרות</button>
@@ -374,6 +385,7 @@ function confirmRemove(w){
 
 function renderMonth(){
   renderGrid();
+  xInfo();
   el('monthTitle').textContent = MONTH.title;
   var t = el('month'); t.innerHTML = '';
   var hr = document.createElement('tr');
@@ -468,6 +480,44 @@ setInterval(function(){
     google.script.run.withSuccessHandler(function(state){ if (busy === 0 && openId === null && state.date === S.date){ S = state; if (MONTH.ym === S.month.ym) MONTH = S.month; render(); } }).apiAdminState(KEY, S.date);
   }
 }, 40000);
+/* שליחת סיכום בוואטסאפ למספר נוסף */
+function xNumber(){
+  var d = String(el('xPhone').value || '').replace(/[^0-9]/g, '');
+  if (d.indexOf('00') === 0) d = d.slice(2);
+  if (d.charAt(0) === '0') d = '972' + d.slice(1);
+  if (d.length < 10 || d.length > 15){ status('המספר לא תקין. כותבים מספר מלא, למשל 0501234567', true); el('xPhone').focus(); return ''; }
+  try { localStorage.setItem('hazmanot_xphone', el('xPhone').value); } catch(e){}
+  return d;
+}
+function xOpen(text){
+  var n = xNumber(); if (!n) return;
+  window.open('https://wa.me/' + n + '?text=' + encodeURIComponent(text), '_blank', 'noopener');
+  status('וואטסאפ נפתח עם ההודעה. נשאר ללחוץ שם על שליחה', false);
+}
+function xMonthText(){
+  var L = ['סיכום ארוחות לחודש ' + MONTH.title + ' – ' + MONTH.site + ':', ''];
+  MONTH.rows.forEach(function(r){ if (r.total > 0) L.push(r.name + ': ' + r.total + (r.total === 1 ? ' ארוחה' : ' ארוחות') + ' · ' + r.cost + ' ₪'); });
+  if (!MONTH.meals) L.push('אין הזמנות בחודש הזה.');
+  L.push('');
+  L.push('סה"כ ' + MONTH.meals + (MONTH.meals === 1 ? ' ארוחה' : ' ארוחות') + ' × ' + MONTH.price + ' ₪ = ' + MONTH.mealsCost + ' ₪');
+  if (MONTH.delivery){ L.push('דמי משלוח: ' + MONTH.delivery + ' ₪'); L.push('סה"כ כולל: ' + MONTH.grand + ' ₪'); }
+  return L.join('\n');
+}
+function xDayText(){
+  var on = S.workers.filter(function(w){ return w.on; });
+  var L = ['סיכום הזמנת ארוחות ל' + S.label + ' – ' + S.site + ':', ''];
+  on.forEach(function(w){ L.push(w.name + ': ' + w.dish + (w.qty > 1 ? ' × ' + w.qty : '')); });
+  if (!on.length) L.push('אין הזמנות ליום הזה.');
+  if (S.notes.length){ L.push(''); S.notes.forEach(function(t){ L.push('תוספות: ' + t); }); }
+  var tot = on.reduce(function(x, w){ return x + (w.qty || 1); }, 0);
+  L.push(''); L.push('סה"כ ' + tot + (tot === 1 ? ' ארוחה' : ' ארוחות') + '.');
+  return L.join('\n');
+}
+function xInfo(){ el('xInfo').textContent = 'היומי: ' + S.label + ' · החודשי: ' + MONTH.title + ' (לפי החודש שמוצג ב"סיכום חודשי")'; }
+try { var xSaved = localStorage.getItem('hazmanot_xphone'); if (xSaved) el('xPhone').value = xSaved; } catch(e){}
+el('xDay').addEventListener('click', function(){ xOpen(xDayText()); });
+el('xMonth').addEventListener('click', function(){ xOpen(xMonthText()); });
+
 render();
 
 }
