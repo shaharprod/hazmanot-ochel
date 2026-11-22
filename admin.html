@@ -113,6 +113,12 @@
   </div>
 
   <div class="card">
+    <h2>תפריט המנות</h2>
+    <div class="muted">אלה המנות שמופיעות בתפריט הנשלף בדף ההזמנה. מנה חדשה שמישהו כותב בהזמנה מתווספת לכאן לבד. הסרה מכאן לא משנה הזמנות שכבר נרשמו.</div>
+    <div id="menuList" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card">
     <h2>סיכום חודשי</h2>
     <div class="daterow">
       <button type="button" id="prevMonth">חודש קודם</button>
@@ -230,10 +236,12 @@ function render(){
       inp.addEventListener('input', function(){ draft = inp.value; });
       inp.addEventListener('keydown', function(e){ if (e.key === 'Enter') saveDish(w, inp.value); });
       ed.appendChild(inp);
-      if (w.recent && w.recent.length){
+      var opts = (w.recent || []).slice();
+      (S.menu || []).forEach(function(d){ if (opts.indexOf(d) === -1) opts.push(d); });
+      if (opts.length){
         var sel = document.createElement('select'); sel.style.width = '100%'; sel.style.marginTop = '6px';
-        var o0 = txt('option', 'בחירה מהזמנות קודמות (' + w.recent.length + ')'); o0.value = ''; sel.appendChild(o0);
-        w.recent.forEach(function(d){ var op = txt('option', d); op.value = d; sel.appendChild(op); });
+        var o0 = txt('option', 'בחירה מהתפריט (' + opts.length + ')'); o0.value = ''; sel.appendChild(o0);
+        opts.forEach(function(d){ var op = txt('option', d); op.value = d; sel.appendChild(op); });
         sel.addEventListener('change', function(){ if (sel.value){ inp.value = sel.value; draft = sel.value; } });
         ed.appendChild(sel);
       }
@@ -289,6 +297,15 @@ function render(){
       call('apiAdminSetActive', [KEY, w.id, !w.active, S.date], w.active ? 'העובד הוסר מהרשימה' : 'העובד הוחזר לרשימה');
     });
     td.appendChild(b); tr.appendChild(td); wt.appendChild(tr);
+  });
+
+  var ml = el('menuList'); ml.innerHTML = '';
+  if (!(S.menu || []).length) ml.appendChild(txt('div', 'התפריט ריק', 'muted'));
+  (S.menu || []).forEach(function(d){
+    var n = document.createElement('div'); n.className = 'note'; n.appendChild(txt('span', d));
+    var x = txt('button', 'הסרה', 'danger'); x.type = 'button'; x.style.padding = '4px 10px';
+    x.addEventListener('click', function(){ call('apiAdminMenuDel', [KEY, d, S.date], 'המנה הוסרה מהתפריט'); });
+    n.appendChild(x); ml.appendChild(n);
   });
 
   renderMonth();
