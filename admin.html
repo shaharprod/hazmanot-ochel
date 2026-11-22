@@ -2,7 +2,9 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f6e56">
+<meta name="format-detection" content="telephone=no">
 <meta name="robots" content="noindex">
 <title>ניהול מערכת הזמנת ארוחות</title>
 <style>
@@ -56,13 +58,41 @@
   #status{position:fixed;bottom:0;right:0;left:0;background:#16302b;color:#fff;text-align:center;padding:8px;font-size:15px;display:none}
   #status.err{background:#a32d2d}
   .urlbox{width:100%;direction:ltr;text-align:left;font-size:14px}
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  body{overflow-x:hidden}
+  button,select,input,a{touch-action:manipulation;-webkit-tap-highlight-color:rgba(15,110,86,.15)}
+  .top{padding-top:calc(16px + env(safe-area-inset-top))}
+  #status{padding-bottom:calc(8px + env(safe-area-inset-bottom));z-index:6}
+  @media (max-width:640px){
+    body{font-size:16px}
+    .top{padding:calc(12px + env(safe-area-inset-top)) 14px 12px}
+    .top h1{font-size:18px;line-height:1.35}
+    .wrap{padding:10px calc(8px + env(safe-area-inset-right)) calc(70px + env(safe-area-inset-bottom)) calc(8px + env(safe-area-inset-left))}
+    .card{padding:12px;border-radius:12px;margin-bottom:12px}
+    h2{font-size:18px}
+    input,select{font-size:16px;min-height:46px}
+    button,.btn{min-height:46px;padding:10px 14px}
+    .grid{grid-template-columns:1fr}
+    .w{min-height:52px;font-size:18px}
+    .w .box{width:28px;height:28px}
+    .daterow > *{flex:1 1 auto}
+    .rowflex > button,.rowflex > .btn{flex:1 1 auto;text-align:center}
+    .field input,.field select{max-width:100%}
+    .nick{width:96px;min-height:40px}
+    table:not(.daygrid){display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;font-size:15px}
+    th,td{padding:6px 8px}
+    .msg{font-size:15px;padding:10px 12px}
+    .total{font-size:20px}
+    .note{flex-wrap:wrap;gap:6px}
+    .urlbox{font-size:13px}
+  }
   body.loading > *:not(#loading){display:none}
   #loading{padding:60px 20px;text-align:center;font-size:20px;color:#0f6e56}
 </style>
 </head>
 <body class="loading">
 <div id="loading">טוען…</div>
-<div class="top"><h1 id="title">ניהול מערכת הזמנת ארוחות</h1></div>
+<div class="top"><h1 id="title">ניהול מערכת הזמנת ארוחות</h1><div id="siteLine" style="font-size:16px;opacity:.95;margin-top:2px"></div></div>
 <div class="wrap">
 
   <div class="card">
@@ -218,7 +248,8 @@ function copyText(text){
 }
 
 function render(){
-  el('title').textContent = 'ניהול מערכת הזמנת ארוחות – ' + S.site;
+  el('title').textContent = 'ניהול מערכת הזמנת ארוחות';
+  el('siteLine').textContent = S.site;
   el('date').value = S.date;
   el('label').textContent = S.label + (S.date === S.today ? ' (היום)' : '');
 
@@ -234,7 +265,7 @@ function render(){
     var b = document.createElement('button'); b.type = 'button'; b.className = 'w';
     var left = document.createElement('span');
     left.appendChild(txt('b', w.name + (w.active ? '' : ' (הוסר)')));
-    if (w.on) left.appendChild(txt('span', w.dish, 'dish'));
+    if (w.on) left.appendChild(txt('span', w.dish + (w.qty > 1 ? ' × ' + w.qty : ''), 'dish'));
     b.appendChild(left);
     b.appendChild(txt('span', w.on ? '✓' : '', 'box'));
     b.addEventListener('click', function(){ if (openId === w.id) openId = null; else { openId = w.id; draft = w.dish || ''; } render(); });
@@ -257,6 +288,18 @@ function render(){
       var row = document.createElement('div'); row.className = 'rowflex';
       var ok = txt('button', 'שמירה', 'primary'); ok.type = 'button'; ok.addEventListener('click', function(){ saveDish(w, inp.value); }); row.appendChild(ok);
       if (w.on){ var rm = txt('button', 'ביטול ההזמנה', 'danger'); rm.type = 'button'; rm.addEventListener('click', function(){ openId = null; call('apiAdminSet', [KEY, S.date, w.id, ''], 'ההזמנה בוטלה'); }); row.appendChild(rm); }
+      if (w.on){
+        var qr = document.createElement('div'); qr.className = 'rowflex'; qr.style.alignItems = 'center';
+        qr.appendChild(txt('span', 'כמות ארוחות:'));
+        var q = w.qty || 1;
+        var minus = txt('button', '−'); minus.type = 'button'; minus.disabled = q <= 1; minus.style.minWidth = '48px';
+        var num = txt('b', String(q)); num.style.minWidth = '28px'; num.style.textAlign = 'center';
+        var plus = txt('button', '+'); plus.type = 'button'; plus.disabled = q >= 20; plus.style.minWidth = '48px';
+        minus.addEventListener('click', function(){ call('apiAdminSetQty', [KEY, S.date, w.id, q - 1], 'הכמות עודכנה'); });
+        plus.addEventListener('click', function(){ call('apiAdminSetQty', [KEY, S.date, w.id, q + 1], 'הכמות עודכנה'); });
+        qr.appendChild(minus); qr.appendChild(num); qr.appendChild(plus);
+        ed.appendChild(qr);
+      }
       ed.appendChild(row); item.appendChild(ed); focusInput = inp;
     }
     list.appendChild(item);

@@ -147,7 +147,7 @@ function render(){
     var head = mk('button', 'head'); head.type = 'button';
     var left = mk('span');
     left.appendChild(mk('span', 'nm', w.name));
-    if (w.on) left.appendChild(mk('span', 'dish', w.dish));
+    if (w.on) left.appendChild(mk('span', 'dish', w.dish + (w.qty > 1 ? ' × ' + w.qty : '')));
     head.appendChild(left);
     head.appendChild(mk('span', 'mark', w.on ? '✓' : ''));
     head.addEventListener('click', function(){
@@ -217,7 +217,7 @@ function render(){
     notes.appendChild(n);
   });
 
-  var n = S.workers.filter(function(w){ return w.on; }).length;
+  var n = S.workers.reduce(function(a, w){ return a + (w.on ? (w.qty || 1) : 0); }, 0);
   el('total').textContent = 'סה"כ להיום: ' + n + (n === 1 ? ' ארוחה' : ' ארוחות');
 }
 
@@ -288,10 +288,11 @@ function sendOrder(){
       var on = S.workers.filter(function(w){ return w.on; });
       if (!on.length){ setStatus('עוד לא נרשמה אף ארוחה להיום', true); return; }
       var sum = el('doneSum'); sum.innerHTML = '';
-      on.forEach(function(w){ var d = mk('div'); d.appendChild(mk('b', '', w.name + ': ')); d.appendChild(mk('span', '', w.dish)); sum.appendChild(d); });
+      on.forEach(function(w){ var d = mk('div'); d.appendChild(mk('b', '', w.name + ': ')); d.appendChild(mk('span', '', w.dish + (w.qty > 1 ? ' × ' + w.qty : ''))); sum.appendChild(d); });
       S.notes.forEach(function(t){ sum.appendChild(mk('div', '', 'תוספות: ' + t)); });
       var now = new Date();
-      el('doneWhen').textContent = 'סה"כ ' + on.length + (on.length === 1 ? ' ארוחה' : ' ארוחות') + ' · התקבל בשעה ' + ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
+      var cnt = on.reduce(function(a, w){ return a + (w.qty || 1); }, 0);
+      el('doneWhen').textContent = 'סה"כ ' + cnt + (cnt === 1 ? ' ארוחה' : ' ארוחות') + ' · התקבל בשעה ' + ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
       el('mainWrap').style.display = 'none'; el('doneWrap').style.display = 'block'; window.scrollTo(0, 0);
       setStatus('ההזמנה אצל ' + 'המזכירה. אפשר לסגור את הדף', false);
     })
