@@ -2,23 +2,28 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f6e56">
+<meta name="format-detection" content="telephone=no">
 <meta name="robots" content="noindex">
-<title>הזמנת ארוחות – קומבה קריית גת</title>
+<title>מערכת הזמנת ארוחות – קומבה קריית גת</title>
 <style>
   *{box-sizing:border-box}
-  body{margin:0;font-family:Arial,"Segoe UI",sans-serif;background:#f4f7f6;color:#16302b;font-size:18px}
-  .top{background:#0f6e56;color:#fff;padding:14px 18px;position:sticky;top:0;z-index:5}
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  button,select,input,a{touch-action:manipulation;-webkit-tap-highlight-color:rgba(15,110,86,.15)}
+  body{overflow-x:hidden;overscroll-behavior-y:contain;margin:0;font-family:Arial,"Segoe UI",sans-serif;background:#f4f7f6;color:#16302b;font-size:18px}
+  .top{background:#0f6e56;color:#fff;padding:calc(10px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) 10px calc(16px + env(safe-area-inset-left));position:sticky;top:0;z-index:5}
   .top h1{margin:0;font-size:21px}
-  .top .date{font-size:17px;opacity:.95;margin-top:2px}
-  .wrap{max-width:560px;margin:0 auto;padding:14px 14px 130px}
+  .top .date{font-size:16px;opacity:.95;margin-top:2px}
+  .wrap{max-width:560px;margin:0 auto;padding:12px calc(12px + env(safe-area-inset-right)) calc(120px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left))}
   .hint{background:#e1f5ee;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:16px;line-height:1.5}
   .closed{background:#fcebeb;color:#791f1f;border-radius:12px;padding:12px 14px;margin-bottom:12px;font-weight:bold;line-height:1.5}
   .item{background:#fff;border:2px solid #d9e2df;border-radius:14px;margin-bottom:9px;overflow:hidden}
   .item.on{border-color:#0f6e56;background:#e1f5ee}
   .item.open{border-color:#0f6e56}
-  .head{display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:0;padding:13px 16px;font-size:20px;font-family:inherit;color:inherit;cursor:pointer;text-align:right}
+  .head{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:58px;background:none;border:0;padding:12px 14px;font-size:20px;font-family:inherit;color:inherit;cursor:pointer;text-align:right}
   .head:disabled{cursor:default;opacity:.7}
+  .head > span:first-child{min-width:0;overflow-wrap:anywhere}
   .head .nm{font-weight:bold}
   .head .dish{display:block;font-size:16px;font-weight:normal;color:#0f6e56;margin-top:2px}
   .mark{width:32px;height:32px;border:2px solid #0f6e56;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:22px;color:#fff;flex:none;background:#fff;margin-right:10px}
@@ -26,9 +31,9 @@
   .edit{padding:0 14px 14px}
   .edit label{display:block;font-size:15px;color:#5b6b67;margin-bottom:4px}
   input[type=text]{width:100%;font-family:inherit;font-size:19px;padding:12px;border:2px solid #0f6e56;border-radius:10px;background:#fff;color:inherit}
-  select.hist{width:100%;margin-top:8px;font-family:inherit;font-size:17px;padding:11px;border:1px solid #0f6e56;border-radius:10px;background:#fff;color:#0f6e56}
-  .btns{display:flex;gap:8px;margin-top:10px}
-  .btns button{flex:1;font-family:inherit;font-size:18px;padding:12px;border-radius:10px;border:2px solid #0f6e56;background:#fff;color:#0f6e56;cursor:pointer}
+  select.hist{width:100%;min-height:50px;margin-top:8px;font-family:inherit;font-size:17px;padding:11px;border:1px solid #0f6e56;border-radius:10px;background:#fff;color:#0f6e56}
+  .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .btns button{flex:1;font-family:inherit;font-size:18px;min-height:50px;padding:12px;border-radius:10px;border:2px solid #0f6e56;background:#fff;color:#0f6e56;cursor:pointer}
   .btns button.primary{background:#0f6e56;color:#fff;font-weight:bold}
   .btns button.danger{border-color:#a32d2d;color:#a32d2d;flex:none}
   h2{font-size:19px;margin:22px 0 8px;color:#0f6e56}
@@ -36,7 +41,7 @@
   .note button{background:none;border:0;color:#a32d2d;font-size:16px;font-family:inherit;cursor:pointer;text-decoration:underline;flex:none;margin-right:10px}
   .addnote{display:flex;gap:8px;margin-top:6px}
   .addnote button{font-family:inherit;font-size:17px;padding:0 16px;border-radius:10px;border:2px solid #0f6e56;background:#0f6e56;color:#fff;cursor:pointer;flex:none}
-  .bar{position:fixed;bottom:0;right:0;left:0;background:#fff;border-top:2px solid #0f6e56;padding:10px 16px;text-align:center}
+  .bar{position:fixed;bottom:0;right:0;left:0;background:#fff;border-top:2px solid #0f6e56;padding:8px 16px calc(8px + env(safe-area-inset-bottom));text-align:center;z-index:6}
   .bar .n{font-size:22px;font-weight:bold;color:#0f6e56}
   .bar .s{font-size:15px;color:#5b6b67;margin-top:2px;min-height:20px}
   .bar .s.err{color:#a32d2d;font-weight:bold}
@@ -46,7 +51,9 @@
   .done .big{font-size:26px;font-weight:bold;color:#0f6e56}
   .done .sum{text-align:right;margin:14px 0;font-size:17px;line-height:1.7}
   .done button{font-family:inherit;font-size:18px;padding:12px 18px;border-radius:10px;border:2px solid #0f6e56;background:#fff;color:#0f6e56;cursor:pointer}
-  .refresh{background:none;border:0;color:#0f6e56;font-size:16px;text-decoration:underline;cursor:pointer;font-family:inherit;margin-top:14px}
+  .refresh{min-height:44px;padding:8px 14px;background:none;border:0;color:#0f6e56;font-size:16px;text-decoration:underline;cursor:pointer;font-family:inherit;margin-top:14px}
+  @media (max-width:380px){ body{font-size:17px} .top h1{font-size:19px} .head{font-size:18px} .bar .n{font-size:20px} .sendbtn{font-size:20px} }
+  @media (max-height:520px){ .top{position:static} }
   body.loading > *:not(#loading){display:none}
   #loading{padding:60px 20px;text-align:center;font-size:20px;color:#0f6e56}
 </style>
@@ -54,7 +61,7 @@
 <body class="loading">
 <div id="loading">טוען…</div>
 <div class="top">
-  <h1 id="title">הזמנת ארוחות</h1>
+  <h1 id="title">מערכת הזמנת ארוחות</h1>
   <div class="date" id="date"></div>
 </div>
 <div class="wrap" id="doneWrap" style="display:none">
@@ -124,8 +131,9 @@ function run(fn, args, okText){
 }
 
 function render(){
-  el('title').textContent = 'הזמנת ארוחות – ' + S.site;
-  el('date').textContent = S.label;
+  el('title').textContent = 'מערכת הזמנת ארוחות';
+  el('date').textContent = S.site + ' · ' + S.label;
+  document.title = 'מערכת הזמנת ארוחות – ' + S.site;
   var c = el('closed');
   if (!S.closed) showClosed = false;
   c.textContent = S.reason || '';
@@ -152,7 +160,8 @@ function render(){
     if (isOpen){
       var ed = mk('div', 'edit');
       ed.appendChild(mk('label', '', 'מה להזמין עבור ' + w.name + '?'));
-      var inp = mk('input'); inp.type = 'text'; inp.value = draft; inp.maxLength = 200; inp.placeholder = "למשל: שווארמה, אורז, צ'יפס, קולה";
+      var inp = mk('input'); inp.type = 'text'; inp.value = draft; inp.maxLength = 200; inp.setAttribute('enterkeyhint', 'done'); inp.setAttribute('autocomplete', 'off'); inp.setAttribute('autocorrect', 'off');
+      inp.addEventListener('focus', function(){ setTimeout(function(){ if (inp.isConnected && inp.scrollIntoView) { try { inp.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch(e){} } }, 350); }); inp.placeholder = "למשל: שווארמה, אורז, צ'יפס, קולה";
       inp.addEventListener('input', function(){ draft = inp.value; });
       inp.addEventListener('blur', function(e){
         if (e.relatedTarget && ed.contains(e.relatedTarget)) return;
