@@ -69,9 +69,9 @@
   <div id="closed" class="closed" style="display:none"></div>
   <div id="hint" class="hint">לוחצים על שם ובוחרים מנה מהתפריט האישי (ההזמנה האחרונה מופיעה ראשונה), או כותבים מנה חדשה (מנה ושתייה). ה-✓ מסומן אוטומטית – רק עובד שמסומן ב-✓ מקבל הזמנה. בסיום לוחצים למטה על "שליחת ההזמנה".</div>
   <div id="list"></div>
-  <h2>תוספות להזמנה כולה</h2>
+  <h2 id="notesH" style="display:none">תוספות להזמנה כולה</h2>
   <div id="notes"></div>
-  <div class="addnote" id="addnote">
+  <div class="addnote" id="addnote" style="display:none">
     <input type="text" id="noteText" placeholder='למשל: פיתות, סכו"ם, סלטים, טחינה'>
     <button type="button" id="noteAdd">הוספה</button>
   </div>
@@ -197,13 +197,12 @@ function render(){
   if (focusInput && document.activeElement !== focusInput){ try { focusInput.focus(); } catch(e){} }
 
   var notes = el('notes'); notes.innerHTML = '';
-  if (!S.notes.length) notes.appendChild(mk('div', 'note', 'אין תוספות להיום'));
+  el('notesH').style.display = S.notes.length ? 'block' : 'none';
   S.notes.forEach(function(t){
     var n = mk('div', 'note'); n.appendChild(mk('span', '', t));
     {
       var x = mk('button', '', 'הסרה'); x.type = 'button';
       x.addEventListener('click', function(){ if (S.closed){ S.notes = S.notes.filter(function(y){ return y !== t; }); render(); return; } run('apiOrderNoteDel', [t], 'התוספת הוסרה'); });
-      n.appendChild(x);
     }
     notes.appendChild(n);
   });
