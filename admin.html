@@ -42,6 +42,13 @@
   th,td{border:1px solid #d9e2df;padding:7px 10px;text-align:right}
   th{background:#e1f5ee}
   .off td{color:#8a9794}
+  .gridwrap{overflow-x:auto;border:1px solid #d9e2df;border-radius:10px}
+  table.grid{font-size:14px;white-space:nowrap}
+  table.grid th,table.grid td{padding:4px 6px;text-align:center;min-width:26px}
+  table.grid td.nm,table.grid th.nm{text-align:right;position:sticky;right:0;background:#fff;z-index:1}
+  table.grid th.nm{background:#e1f5ee}
+  table.grid .we{background:#faeeda}
+  table.grid tr.tot td,table.grid tr.tot th{font-weight:bold;background:#e1f5ee}
   .rowflex{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
   .field{margin-bottom:10px}
   .field label{display:block;font-size:15px;color:#5b6b67;margin-bottom:3px}
@@ -127,6 +134,8 @@
       <a class="btn" id="sheetLink" target="_blank" rel="noopener">פתיחת הגיליון המלא</a>
     </div>
     <table id="month"></table>
+    <h3 style="margin:18px 0 6px;font-size:17px">הטבלה היומית (כמו בקובץ האקסל)</h3>
+    <div class="gridwrap"><table id="monthGrid" class="grid"></table></div>
   </div>
 
   <div class="card">
@@ -321,6 +330,7 @@ function confirmRemove(w){
 }
 
 function renderMonth(){
+  renderGrid();
   el('monthTitle').textContent = MONTH.title;
   var t = el('month'); t.innerHTML = '';
   var hr = document.createElement('tr');
@@ -336,6 +346,31 @@ function renderMonth(){
     r.forEach(function(c){ var td = txt('th', c); tr.appendChild(td); });
     t.appendChild(tr);
   });
+}
+
+function renderGrid(){
+  var t = el('monthGrid'); t.innerHTML = '';
+  if (!MONTH.grid) return;
+  var we = MONTH.letters.map(function(l){ return l === 'ו' || l === 'ש'; });
+  function cell(tag, text, cls){ var c = txt(tag, text); if (cls) c.className = cls; return c; }
+  var h1 = document.createElement('tr');
+  h1.appendChild(cell('th', "מס'")); h1.appendChild(cell('th', 'שם משפחה', 'nm')); h1.appendChild(cell('th', 'שם פרטי')); h1.appendChild(cell('th', 'חברה'));
+  for (var d = 1; d <= MONTH.days; d++) h1.appendChild(cell('th', d, we[d - 1] ? 'we' : ''));
+  h1.appendChild(cell('th', 'סה"כ')); h1.appendChild(cell('th', 'לחיוב ₪')); t.appendChild(h1);
+  var h2 = document.createElement('tr');
+  h2.appendChild(cell('th', '')); h2.appendChild(cell('th', '', 'nm')); h2.appendChild(cell('th', '')); h2.appendChild(cell('th', ''));
+  MONTH.letters.forEach(function(l, i){ h2.appendChild(cell('th', l, we[i] ? 'we' : '')); });
+  h2.appendChild(cell('th', '')); h2.appendChild(cell('th', '')); t.appendChild(h2);
+  MONTH.grid.forEach(function(r, i){
+    var tr = document.createElement('tr'); if (!r.active) tr.className = 'off';
+    tr.appendChild(cell('td', i + 1)); tr.appendChild(cell('td', r.last, 'nm')); tr.appendChild(cell('td', r.first)); tr.appendChild(cell('td', r.company));
+    r.cells.forEach(function(c, j){ tr.appendChild(cell('td', c, we[j] ? 'we' : '')); });
+    tr.appendChild(cell('td', r.total)); tr.appendChild(cell('td', r.cost)); t.appendChild(tr);
+  });
+  var tot = document.createElement('tr'); tot.className = 'tot';
+  tot.appendChild(cell('td', '')); tot.appendChild(cell('td', 'סה"כ ארוחות', 'nm')); tot.appendChild(cell('td', '')); tot.appendChild(cell('td', ''));
+  MONTH.dayTotals.forEach(function(n){ tot.appendChild(cell('td', n)); });
+  tot.appendChild(cell('td', MONTH.meals)); tot.appendChild(cell('td', MONTH.mealsCost)); t.appendChild(tot);
 }
 
 function loadMonth(ym){

@@ -67,7 +67,7 @@
 </div>
 <div class="wrap" id="mainWrap">
   <div id="closed" class="closed" style="display:none"></div>
-  <div id="hint" class="hint">לוחצים על שם, כותבים מה להזמין (מנה ושתייה) ולוחצים "שמירה". אפשר לבחור מנה מהתפריט, או לכתוב מנה חדשה והיא תתווסף לתפריט. בסיום לוחצים למטה על "שליחת ההזמנה".</div>
+  <div id="hint" class="hint">לוחצים על שם, כותבים מה להזמין (מנה ושתייה) ולוחצים "שמירה". אפשר לבחור מהתפריט האישי (ההזמנה האחרונה מופיעה ראשונה), או לכתוב מנה חדשה. בסיום לוחצים למטה על "שליחת ההזמנה".</div>
   <div id="list"></div>
   <h2>תוספות להזמנה כולה</h2>
   <div id="notes"></div>
@@ -150,12 +150,20 @@ function render(){
       inp.addEventListener('input', function(){ draft = inp.value; });
       inp.addEventListener('keydown', function(e){ if (e.key === 'Enter') save(w, inp.value); });
       ed.appendChild(inp);
-      var opts = (w.recent || []).slice();
-      (S.menu || []).forEach(function(d){ if (opts.indexOf(d) === -1) opts.push(d); });
-      if (opts.length){
+      var mine = (w.recent || []).slice();
+      var others = (S.menu || []).filter(function(d){ return mine.indexOf(d) === -1; });
+      if (mine.length + others.length){
         var sel = mk('select', 'hist');
-        var o0 = mk('option', '', 'בחירה מהתפריט (' + opts.length + ')'); o0.value = ''; sel.appendChild(o0);
-        opts.forEach(function(d){ var op = mk('option', '', d); op.value = d; sel.appendChild(op); });
+        var o0 = mk('option', '', 'בחירה מהתפריט האישי (' + (mine.length + others.length) + ')'); o0.value = ''; sel.appendChild(o0);
+        var addGroup = function(label, items){
+          if (!items.length) return;
+          var g = document.createElement('optgroup'); g.label = label;
+          items.forEach(function(d){ var op = mk('option', '', d); op.value = d; g.appendChild(op); });
+          sel.appendChild(g);
+        };
+        addGroup('ההזמנה האחרונה', mine.slice(0, 1));
+        addGroup('המנות שלי, מהנפוצה לפחות נפוצה', mine.slice(1));
+        addGroup('שאר התפריט', others);
         sel.addEventListener('change', function(){ if (sel.value){ inp.value = sel.value; draft = sel.value; } });
         ed.appendChild(sel);
       }
