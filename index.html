@@ -67,7 +67,7 @@
 </div>
 <div class="wrap" id="mainWrap">
   <div id="closed" class="closed" style="display:none"></div>
-  <div id="hint" class="hint">לוחצים על שם, כותבים מה להזמין (מנה ושתייה) ולוחצים "שמירה". אפשר לבחור מהתפריט האישי (ההזמנה האחרונה מופיעה ראשונה), או לכתוב מנה חדשה. בסיום לוחצים למטה על "שליחת ההזמנה".</div>
+  <div id="hint" class="hint">לוחצים על שם ובוחרים מנה מהתפריט האישי (ההזמנה האחרונה מופיעה ראשונה), או כותבים מנה חדשה (מנה ושתייה). ה-✓ מסומן אוטומטית – רק עובד שמסומן ב-✓ מקבל הזמנה. בסיום לוחצים למטה על "שליחת ההזמנה".</div>
   <div id="list"></div>
   <h2>תוספות להזמנה כולה</h2>
   <div id="notes"></div>
@@ -105,6 +105,7 @@ var S = window.__BOOT__;
 var pending = 0;
 var openId = null;
 var draft = '';
+var showClosed = false;
 
 function el(id){ return document.getElementById(id); }
 function mk(tag, cls, text){ var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
@@ -114,7 +115,7 @@ function run(fn, args, okText){
   pending++; setStatus('שומר...', false);
   var r = google.script.run
     .withSuccessHandler(function(state){ pending--; if (pending === 0){ S = state; render(); } setStatus(okText || 'נשמר ✓', false); })
-    .withFailureHandler(function(err){ pending--; setStatus('לא נשמר: ' + (err && err.message ? err.message : 'תקלה, נסו שוב'), true); if (pending === 0) reload(true); });
+    .withFailureHandler(function(err){ pending--; showClosed = true; setStatus('לא נשמר: ' + (err && err.message ? err.message : 'תקלה, נסו שוב'), true); if (pending === 0) reload(true); });
   r[fn].apply(r, args);
 }
 
@@ -122,23 +123,24 @@ function render(){
   el('title').textContent = 'הזמנת ארוחות – ' + S.site;
   el('date').textContent = S.label;
   var c = el('closed');
-  if (S.closed){ c.style.display = 'block'; c.textContent = S.reason; el('hint').style.display = 'none'; el('addnote').style.display = 'none'; openId = null; }
-  else { c.style.display = 'none'; el('hint').style.display = 'block'; el('addnote').style.display = 'flex'; }
-  el('sendBtn').style.display = S.closed ? 'none' : 'block';
+  if (!S.closed) showClosed = false;
+  c.textContent = S.reason || '';
+  c.style.display = (S.closed && showClosed) ? 'block' : 'none';
 
   var list = el('list'); list.innerHTML = '';
   var focusInput = null;
   S.workers.forEach(function(w){
-    var isOpen = openId === w.id && !S.closed;
+    var isOpen = openId === w.id;
     var item = mk('div', 'item' + (w.on ? ' on' : '') + (isOpen ? ' open' : ''));
-    var head = mk('button', 'head'); head.type = 'button'; head.disabled = !!S.closed;
+    var head = mk('button', 'head'); head.type = 'button';
     var left = mk('span');
     left.appendChild(mk('span', 'nm', w.name));
     if (w.on) left.appendChild(mk('span', 'dish', w.dish));
     head.appendChild(left);
     head.appendChild(mk('span', 'mark', w.on ? '✓' : ''));
     head.addEventListener('click', function(){
-      if (openId === w.id){ openId = null; } else { openId = w.id; draft = w.dish || ''; }
+      var was = openId; autoSave();
+      if (was === w.id){ openId = null; } else { openId = w.id; draft = w.dish || ''; }
       render();
     });
     item.appendChild(head);
@@ -148,6 +150,14 @@ function render(){
       ed.appendChild(mk('label', '', 'מה להזמין עבור ' + w.name + '?'));
       var inp = mk('input'); inp.type = 'text'; inp.value = draft; inp.maxLength = 200; inp.placeholder = "למשל: שווארמה, אורז, צ'יפס, קולה";
       inp.addEventListener('input', function(){ draft = inp.value; });
+      inp.addEventListener('blur', function(e){
+        if (e.relatedTarget && ed.contains(e.relatedTarget)) return;
+        setTimeout(function(){
+          if (!inp.isConnected || openId !== w.id) return;
+          if (document.activeElement === inp || ed.contains(document.activeElement)) return;
+          autoSave();
+        }, 300);
+      });
       inp.addEventListener('keydown', function(e){ if (e.key === 'Enter') save(w, inp.value); });
       ed.appendChild(inp);
       var mine = (w.recent || []).slice();
@@ -164,15 +174,15 @@ function render(){
         addGroup('ההזמנה האחרונה', mine.slice(0, 1));
         addGroup('המנות שלי, מהנפוצה לפחות נפוצה', mine.slice(1));
         addGroup('שאר התפריט', others);
-        sel.addEventListener('change', function(){ if (sel.value){ inp.value = sel.value; draft = sel.value; } });
+        sel.addEventListener('change', function(){ if (sel.value){ inp.value = sel.value; draft = sel.value; save(w, sel.value); } });
         ed.appendChild(sel);
       }
       var btns = mk('div', 'btns');
-      var ok = mk('button', 'primary', 'שמירה'); ok.type = 'button'; ok.addEventListener('click', function(){ save(w, inp.value); });
+      var ok = mk('button', 'primary', '✓ אישור'); ok.type = 'button'; ok.addEventListener('click', function(){ save(w, inp.value); });
       btns.appendChild(ok);
       if (w.on){
         var rm = mk('button', 'danger', 'ביטול ההזמנה'); rm.type = 'button';
-        rm.addEventListener('click', function(){ openId = null; w.on = false; w.dish = ''; render(); run('apiOrderSet', [w.id, ''], 'ההזמנה בוטלה'); });
+        rm.addEventListener('click', function(){ if (blocked()) return; openId = null; w.on = false; w.dish = ''; render(); run('apiOrderSet', [w.id, ''], 'ההזמנה בוטלה'); });
         btns.appendChild(rm);
       }
       ed.appendChild(btns);
@@ -187,9 +197,9 @@ function render(){
   if (!S.notes.length) notes.appendChild(mk('div', 'note', 'אין תוספות להיום'));
   S.notes.forEach(function(t){
     var n = mk('div', 'note'); n.appendChild(mk('span', '', t));
-    if (!S.closed){
+    {
       var x = mk('button', '', 'הסרה'); x.type = 'button';
-      x.addEventListener('click', function(){ run('apiOrderNoteDel', [t], 'התוספת הוסרה'); });
+      x.addEventListener('click', function(){ if (blocked()) return; run('apiOrderNoteDel', [t], 'התוספת הוסרה'); });
       n.appendChild(x);
     }
     notes.appendChild(n);
@@ -199,9 +209,34 @@ function render(){
   el('total').textContent = 'סה"כ להיום: ' + n + (n === 1 ? ' ארוחה' : ' ארוחות');
 }
 
+function isDirty(){
+  if (openId === null) return false;
+  var ow = S.workers.filter(function(x){ return x.id === openId; })[0];
+  if (!ow) return false;
+  return draft.replace(/\s+/g, ' ').trim() !== (ow.dish || '');
+}
+
+// a dish that was chosen or typed is confirmed (✓) by itself when the user moves on
+function autoSave(){
+  if (!isDirty()) return;
+  var ow = S.workers.filter(function(x){ return x.id === openId; })[0];
+  var t = draft.replace(/\s+/g, ' ').trim();
+  if (!t){ openId = null; draft = ''; return; }
+  save(ow, t);
+}
+
+function blocked(){
+  if (!S.closed) return false;
+  showClosed = true; openId = null; render();
+  setStatus('לא נשמר – ההזמנה להיום סגורה', true);
+  window.scrollTo(0, 0);
+  return true;
+}
+
 function save(w, text){
   text = String(text || '').replace(/\s+/g, ' ').trim();
   if (!text){ setStatus('כתבו מה להזמין, או בחרו מהתפריט', true); return; }
+  if (blocked()) return;
   openId = null; w.on = true; w.dish = text; render();
   run('apiOrderSet', [w.id, text]);
 }
@@ -209,6 +244,7 @@ function save(w, text){
 function addNote(){
   var t = el('noteText').value.replace(/\s+/g, ' ').trim();
   if (!t){ setStatus('כתבו את התוספת', true); return; }
+  if (blocked()) return;
   el('noteText').value = '';
   run('apiOrderNoteAdd', [t], 'התוספת נשמרה');
 }
@@ -225,9 +261,10 @@ function reload(quiet){
 el('noteAdd').addEventListener('click', addNote);
 el('noteText').addEventListener('keydown', function(e){ if (e.key === 'Enter') addNote(); });
 function sendOrder(){
-  var dr = draft.replace(/\s+/g, ' ').trim(), ow = S.workers.filter(function(w){ return w.id === openId; })[0];
-  if (openId !== null && dr && (!ow || dr !== (ow.dish || ''))){ setStatus('יש שם פתוח שעוד לא נשמר. לחצו "שמירה" ואז שלחו', true); return; }
-  if (pending > 0){ setStatus('רגע, השמירה האחרונה עוד בדרך. נסו שוב בעוד שנייה', true); return; }
+  if (blocked()) return;
+  autoSave();
+  if (S.closed && showClosed) return;
+  if (pending > 0){ setStatus('שומר...', false); setTimeout(sendOrder, 400); return; }
   openId = null;
   el('sendBtn').disabled = true; setStatus('שולח...', false);
   google.script.run
@@ -248,7 +285,8 @@ function sendOrder(){
 }
 el('sendBtn').addEventListener('click', sendOrder);
 el('backBtn').addEventListener('click', function(){ el('doneWrap').style.display = 'none'; el('mainWrap').style.display = 'block'; setStatus('', false); });
-el('refresh').addEventListener('click', function(){ openId = null; reload(false); });
+el('refresh').addEventListener('click', function(){ autoSave(); openId = null; reload(false); });
+document.addEventListener('visibilitychange', function(){ if (document.hidden) autoSave(); });
 setInterval(function(){ if (!document.hidden) reload(true); }, 45000);
 render();
 setStatus('בסיום לוחצים "שליחת ההזמנה"', false);
