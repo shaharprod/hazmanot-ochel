@@ -112,10 +112,13 @@ function mk(tag, cls, text){ var e = document.createElement(tag); if (cls) e.cla
 function setStatus(text, isErr){ var s = el('status'); s.textContent = text; s.className = 's' + (isErr ? ' err' : ''); }
 
 function run(fn, args, okText){
+  if (S.closed){ setStatus('', false); return; }
   pending++; setStatus('שומר...', false);
   var r = google.script.run
     .withSuccessHandler(function(state){ pending--; if (pending === 0){ S = state; render(); } setStatus(okText || 'נשמר ✓', false); })
-    .withFailureHandler(function(err){ pending--; showClosed = true; setStatus('לא נשמר: ' + (err && err.message ? err.message : 'תקלה, נסו שוב'), true); if (pending === 0) reload(true); });
+    .withFailureHandler(function(err){ pending--; var m = err && err.message ? String(err.message) : '';
+      if (/לפנות אל/.test(m)){ S.closed = true; S.reason = m.replace(/^Error:\s*/, ''); setStatus('', false); return; }
+      setStatus('לא נשמר: ' + (m || 'תקלה, נסו שוב'), true); if (pending === 0) reload(true); });
   r[fn].apply(r, args);
 }
 
@@ -182,7 +185,7 @@ function render(){
       btns.appendChild(ok);
       if (w.on){
         var rm = mk('button', 'danger', 'ביטול ההזמנה'); rm.type = 'button';
-        rm.addEventListener('click', function(){ if (blocked()) return; openId = null; w.on = false; w.dish = ''; render(); run('apiOrderSet', [w.id, ''], 'ההזמנה בוטלה'); });
+        rm.addEventListener('click', function(){ openId = null; w.on = false; w.dish = ''; render(); run('apiOrderSet', [w.id, ''], 'ההזמנה בוטלה'); });
         btns.appendChild(rm);
       }
       ed.appendChild(btns);
@@ -199,7 +202,7 @@ function render(){
     var n = mk('div', 'note'); n.appendChild(mk('span', '', t));
     {
       var x = mk('button', '', 'הסרה'); x.type = 'button';
-      x.addEventListener('click', function(){ if (blocked()) return; run('apiOrderNoteDel', [t], 'התוספת הוסרה'); });
+      x.addEventListener('click', function(){ if (S.closed){ S.notes = S.notes.filter(function(y){ return y !== t; }); render(); return; } run('apiOrderNoteDel', [t], 'התוספת הוסרה'); });
       n.appendChild(x);
     }
     notes.appendChild(n);
@@ -228,15 +231,18 @@ function autoSave(){
 function blocked(){
   if (!S.closed) return false;
   showClosed = true; openId = null; render();
-  setStatus('לא נשמר – ההזמנה להיום סגורה', true);
+  setStatus('ההזמנה לא נשלחה', true);
   window.scrollTo(0, 0);
+  google.script.run
+    .withSuccessHandler(function(state){ S = state; render(); if (!S.closed) setStatus('ההזמנה נפתחה מחדש. אפשר להזמין', false); })
+    .withFailureHandler(function(){})
+    .apiOrderState();
   return true;
 }
 
 function save(w, text){
   text = String(text || '').replace(/\s+/g, ' ').trim();
   if (!text){ setStatus('כתבו מה להזמין, או בחרו מהתפריט', true); return; }
-  if (blocked()) return;
   openId = null; w.on = true; w.dish = text; render();
   run('apiOrderSet', [w.id, text]);
 }
@@ -244,7 +250,7 @@ function save(w, text){
 function addNote(){
   var t = el('noteText').value.replace(/\s+/g, ' ').trim();
   if (!t){ setStatus('כתבו את התוספת', true); return; }
-  if (blocked()) return;
+  if (S.closed){ el('noteText').value = ''; if (S.notes.indexOf(t) === -1) S.notes.push(t); render(); return; }
   el('noteText').value = '';
   run('apiOrderNoteAdd', [t], 'התוספת נשמרה');
 }
@@ -253,7 +259,7 @@ function reload(quiet){
   if (pending > 0 || openId !== null) return;
   if (document.activeElement && document.activeElement.id === 'noteText' && el('noteText').value) return;
   google.script.run
-    .withSuccessHandler(function(state){ if (pending === 0 && openId === null){ S = state; render(); if (!quiet) setStatus('הרשימה עודכנה', false); } })
+    .withSuccessHandler(function(state){ if (S.closed && state.closed && !showClosed) return; if (pending === 0 && openId === null){ S = state; render(); if (!quiet) setStatus('הרשימה עודכנה', false); } })
     .withFailureHandler(function(){ if (!quiet) setStatus('הרענון נכשל, בדקו את החיבור לאינטרנט', true); })
     .apiOrderState();
 }
