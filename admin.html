@@ -480,6 +480,7 @@ function renderSettings(){
     var l = txt('label', m.label); l.setAttribute('for', 'set_' + m.k);
     var i = document.createElement('input'); i.id = 'set_' + m.k; i.value = S.settings[m.k] === null || S.settings[m.k] === undefined ? '' : S.settings[m.k];
     if (m.k === 'phone'){ i.style.direction = 'ltr'; i.style.textAlign = 'left'; i.placeholder = '0501234567'; }
+    if (m.k === 'notifyEmail'){ i.type = 'email'; i.style.direction = 'ltr'; i.style.textAlign = 'left'; i.placeholder = 'name@example.com'; i.autocomplete = 'off'; }
     f.appendChild(l); f.appendChild(i); box.appendChild(f);
   });
   settingsDrawn = true;
