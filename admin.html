@@ -86,6 +86,10 @@
     .note{flex-wrap:wrap;gap:6px}
     .urlbox{font-size:13px}
   }
+  textarea{font-family:inherit;font-size:17px;line-height:1.6;padding:10px 12px;border:1px solid #b9c7c3;border-radius:10px;background:#fff;color:inherit;width:100%;min-height:210px;resize:vertical}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
+  .chips button{padding:6px 12px;min-height:40px;font-size:15px;border-radius:20px}
+  #tplPick,#tplEdit{width:100%}
   body.loading > *:not(#loading){display:none}
   #loading{padding:60px 20px;text-align:center;font-size:20px;color:#0f6e56}
 </style>
@@ -114,6 +118,7 @@
       <button type="button" id="noteAdd">הוספת תוספת</button>
     </div>
     <div class="total" id="total"></div>
+    <div class="field" id="tplPickBox" style="display:none"><label for="tplPick">נוסח ההודעה</label><select id="tplPick"></select></div>
     <div class="muted">ההודעה שתישלח:</div>
     <div class="msg" id="msg"></div>
     <div id="phoneWarn"></div>
@@ -123,6 +128,24 @@
       <button type="button" id="toggleSent"></button>
     </div>
     <div class="muted" style="margin-top:8px">אחרי השליחה ההזמנה ננעלת לעובדים. את יכולה להמשיך לשנות מכאן, או לפתוח אותה מחדש.</div>
+  </div>
+
+  <div class="card" id="tplCard" style="display:none">
+    <h2 id="tplTitle">נוסחי ההודעה</h2>
+    <div class="muted">כאן כותבים נוסחים משלך להודעה, שומרים אותם, ובוחרים באיזה נוסח לשלוח. הנוסח הקבוע של המערכת נשאר תמיד, ואפשר לחזור אליו בכל רגע.</div>
+    <div class="field" style="margin-top:10px"><label for="tplEdit">מה לפתוח לעריכה</label><select id="tplEdit"></select></div>
+    <div class="field"><label for="tplName">שם הנוסח</label><input id="tplName" maxlength="40" autocomplete="off" placeholder="למשל: נוסח קצר" style="width:100%"></div>
+    <div class="field"><label for="tplText">הנוסח</label><textarea id="tplText" maxlength="1500" dir="rtl"></textarea></div>
+    <div class="muted">שדות שהמערכת ממלאת לבד. לוחצים על שדה והוא נכנס לנוסח במקום שבו עומד הסמן:</div>
+    <div class="chips" id="tplChips"></div>
+    <div class="muted">כך ההודעה תיראה עם ההזמנה של היום שמוצג:</div>
+    <div class="msg" id="tplPreview"></div>
+    <div class="rowflex">
+      <button type="button" class="primary" id="tplSave">שמירת הנוסח</button>
+      <button type="button" id="tplNew">נוסח חדש</button>
+      <button type="button" class="danger" id="tplDel">מחיקת הנוסח</button>
+    </div>
+    <div class="muted" style="margin-top:8px">נוסח שנשמר נבחר מיד להודעה. כדי להחליף נוסח בוחרים אותו בתפריט "נוסח ההודעה" שמעל ההודעה, בחלק "ההזמנה היומית".</div>
   </div>
 
   <div class="card">
@@ -338,6 +361,7 @@ function render(){
   el('total').textContent = 'סה"כ: ' + S.total + (S.total === 1 ? ' ארוחה' : ' ארוחות');
   el('msg').textContent = S.message;
   el('send').href = S.waLink;
+  renderTpl();
   var pw = el('phoneWarn'); pw.innerHTML = '';
   if (!S.settings.phone) pw.appendChild(txt('div', 'לא הוגדר טלפון לספקית, ולכן וואטסאפ יבקש לבחור איש קשר. אפשר להגדיר את הטלפון למטה, בהגדרות.', 'warn'));
   el('toggleSent').textContent = S.sent ? 'פתיחת ההזמנה מחדש לעובדים' : 'סימון כנשלח בלי וואטסאפ';
@@ -486,7 +510,7 @@ el('saveSettings').addEventListener('click', function(){
   call('apiAdminSaveSettings', [KEY, o, S.date], 'ההגדרות נשמרו');
 });
 setInterval(function(){
-  if (!document.hidden && busy === 0 && openId === null && S.date === S.today && !(document.activeElement && /INPUT|SELECT/.test(document.activeElement.tagName))) {
+  if (!document.hidden && busy === 0 && openId === null && S.date === S.today && !(document.activeElement && /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))) {
     google.script.run.withSuccessHandler(function(state){ if (busy === 0 && openId === null && state.date === S.date){ S = state; if (MONTH.ym === S.month.ym) MONTH = S.month; render(); } }).apiAdminState(KEY, S.date);
   }
 }, 40000);
@@ -546,6 +570,108 @@ function mOpen(subject, text){
 try { var mSaved = localStorage.getItem('hazmanot_mto'); if (mSaved) el('mTo').value = mSaved; } catch(e){}
 el('mDay').addEventListener('click', function(){ mOpen('סיכום הזמנת ארוחות – ' + S.label + ' – ' + S.site, xDayText()); });
 el('mMonth').addEventListener('click', function(){ mOpen('סיכום ארוחות לחודש ' + MONTH.title + ' – ' + MONTH.site, xMonthText()); });
+
+/* נוסחי ההודעה לספקית */
+var TPL_LABELS = { 'ספקית': 'שם הספקית', 'תאריך': 'התאריך', 'אתר': 'שם האתר', 'רשימה': 'רשימת ההזמנות', 'תוספות': 'התוספות', 'סהכ': 'סך הארוחות', 'חתימה': 'החתימה' };
+var tplEditing = '';
+var tplDrawn = false;
+var tplDelArmed = 0;
+function tplHas(){ return !!(S.templates && S.templates.length); }
+function tplFind(name){ return (S.templates || []).filter(function(t){ return t.name === name; })[0] || null; }
+function tplFixed(){ return (S.templates || []).filter(function(t){ return t.fixed; })[0] || null; }
+function tplClean(t){
+  return String(t || '').replace(/\r\n?/g, '\n').split('\n').map(function(l){ return l.replace(/\s+$/, ''); }).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+function tplRender(tpl){
+  var on = S.workers.filter(function(w){ return w.on; }), count = 0;
+  var list = on.map(function(w){ var q = w.qty || 1; count += q; return (w.label || w.name) + ': ' + w.dish + (q > 1 ? ' × ' + q : ''); }).join('\n');
+  var extras = S.notes.map(function(n){ return 'תוספות: ' + n; }).join('\n');
+  var t = String(tpl || '').replace(/\r\n?/g, '\n');
+  if (extras && t.indexOf('{תוספות}') === -1) t = t.split('{רשימה}').join('{רשימה}\n\n{תוספות}\n');
+  var map = { 'ספקית': S.settings.supplier, 'תאריך': S.label, 'אתר': S.site, 'רשימה': list, 'תוספות': extras, 'סהכ': count + (count === 1 ? ' ארוחה' : ' ארוחות'), 'חתימה': S.settings.sign };
+  t = t.replace(/\{(ספקית|תאריך|אתר|רשימה|תוספות|סהכ|חתימה)\}/g, function(m, k){ return String(map[k]); });
+  return tplClean(t);
+}
+function tplPreview(){
+  var t = el('tplText').value;
+  el('tplPreview').textContent = t.trim() ? tplRender(t) : 'הנוסח ריק';
+}
+function tplLoad(name){
+  var t = name ? tplFind(name) : null;
+  if (t && !t.fixed){ tplEditing = t.name; el('tplName').value = t.name; el('tplText').value = t.text; }
+  else { tplEditing = ''; el('tplName').value = ''; var f = tplFixed(); el('tplText').value = f ? f.text : ''; }
+  tplDelArmed = 0;
+  renderTpl();
+}
+function renderTpl(){
+  var has = tplHas();
+  el('tplPickBox').style.display = has ? '' : 'none';
+  el('tplCard').style.display = has ? '' : 'none';
+  if (!has) return;
+  el('tplTitle').textContent = 'נוסחי ההודעה ל' + (S.settings.supplier || 'ספקית');
+  var pick = el('tplPick');
+  if (document.activeElement !== pick){
+    pick.innerHTML = '';
+    S.templates.forEach(function(t){ var o = txt('option', t.name); o.value = t.name; pick.appendChild(o); });
+    pick.value = S.template;
+  }
+  if (tplEditing && !tplFind(tplEditing)) tplEditing = '';
+  var ed = el('tplEdit');
+  if (document.activeElement !== ed){
+    ed.innerHTML = '';
+    var o0 = txt('option', 'נוסח חדש (מתחיל מהנוסח הקבוע)'); o0.value = ''; ed.appendChild(o0);
+    S.templates.forEach(function(t){ if (t.fixed) return; var o = txt('option', t.name); o.value = t.name; ed.appendChild(o); });
+    ed.value = tplEditing;
+  }
+  if (!tplDrawn){
+    tplDrawn = true;
+    var chips = el('tplChips');
+    (S.tplFields || []).forEach(function(k){
+      var b = txt('button', TPL_LABELS[k] || k); b.type = 'button';
+      b.addEventListener('click', function(){ tplInsert('{' + k + '}'); });
+      chips.appendChild(b);
+    });
+    var f = tplFixed(); el('tplText').value = f ? f.text : '';
+  }
+  el('tplDel').style.display = tplEditing ? '' : 'none';
+  el('tplDel').textContent = 'מחיקת הנוסח';
+  tplPreview();
+}
+function tplInsert(token){
+  var ta = el('tplText'), a = ta.selectionStart, b = ta.selectionEnd, v = ta.value;
+  if (typeof a !== 'number'){ a = b = v.length; }
+  ta.value = v.slice(0, a) + token + v.slice(b);
+  ta.focus();
+  try { ta.selectionStart = ta.selectionEnd = a + token.length; } catch(e){}
+  tplPreview();
+}
+el('tplText').addEventListener('input', tplPreview);
+el('tplPick').addEventListener('change', function(){ var n = this.value; this.blur(); call('apiAdminTplSelect', [KEY, n, S.date], 'הנוסח הוחלף'); });
+el('tplEdit').addEventListener('change', function(){ var n = this.value; this.blur(); tplLoad(n); });
+el('tplNew').addEventListener('click', function(){ tplLoad(''); el('tplName').focus(); });
+el('tplSave').addEventListener('click', function(){
+  var name = el('tplName').value.replace(/\s+/g, ' ').trim(), text = tplClean(el('tplText').value);
+  if (!name){ status('יש לתת שם לנוסח', true); el('tplName').focus(); return; }
+  var ex = tplFind(name);
+  if (ex && ex.fixed){ status('השם הזה שמור לנוסח הקבוע. יש לבחור שם אחר', true); el('tplName').focus(); return; }
+  if (!text){ status('יש לכתוב את הנוסח', true); el('tplText').focus(); return; }
+  if (text.indexOf('{רשימה}') === -1){ status('חסר בנוסח השדה "רשימת ההזמנות". בלי השדה הזה ההזמנות לא ייכנסו להודעה', true); return; }
+  if (document.activeElement) document.activeElement.blur();
+  tplEditing = name; tplDelArmed = 0;
+  call('apiAdminTplSave', [KEY, name, text, S.date], 'הנוסח נשמר ונבחר להודעה');
+});
+el('tplDel').addEventListener('click', function(){
+  if (!tplEditing) return;
+  if (!(tplDelArmed && Date.now() - tplDelArmed < 5000)){
+    tplDelArmed = Date.now();
+    el('tplDel').textContent = 'ללחוץ שוב למחיקה';
+    status('למחיקת הנוסח "' + tplEditing + '" לחצי שוב על הכפתור', false);
+    return;
+  }
+  var n = tplEditing; tplDelArmed = 0; tplEditing = '';
+  el('tplName').value = ''; var f = tplFixed(); el('tplText').value = f ? f.text : '';
+  call('apiAdminTplDel', [KEY, n, S.date], 'הנוסח נמחק');
+});
 
 render();
 
